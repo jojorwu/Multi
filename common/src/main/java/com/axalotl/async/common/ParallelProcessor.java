@@ -1,7 +1,6 @@
 package com.axalotl.async.common;
 
 import com.axalotl.async.common.config.AsyncConfig;
-import com.axalotl.async.common.util.AsyncThreadTracker;
 import lombok.Getter;
 import lombok.Setter;
 import net.minecraft.server.MinecraftServer;
@@ -43,15 +42,12 @@ public class ParallelProcessor {
     private static final BlockingQueue<CompletableFuture<?>> taskQueue = new LinkedBlockingQueue<>();
     private static final Set<UUID> blacklistedEntity = ConcurrentHashMap.newKeySet();
     private static final Map<UUID, Integer> portalTickSyncMap = new ConcurrentHashMap<>();
+    private static final Map<String, Set<WeakReference<Thread>>> mcThreadTracker = new ConcurrentHashMap<>();
     public static final Set<Class<?>> BLOCKED_ENTITIES = Set.of(
             FallingBlockEntity.class,
             Shulker.class,
             Boat.class
     );
-
-    public static void registerThread(String poolName, Thread thread) {
-        AsyncThreadTracker.registerThread(poolName, thread);
-    }
 
     public static void setupThreadPool(int parallelism, Class<?> asyncClass) {
         ForkJoinPool.ForkJoinWorkerThreadFactory threadFactory = pool -> {
@@ -69,8 +65,20 @@ public class ParallelProcessor {
         LOGGER.info("Initialized Pool with {} threads", parallelism);
     }
 
+    public static void registerThread(String poolName, Thread thread) {
+        mcThreadTracker
+                .computeIfAbsent(poolName, key -> ConcurrentHashMap.newKeySet())
+                .add(new WeakReference<>(thread));
+    }
+
+    private static boolean isThreadInPool(Thread thread) {
+        return mcThreadTracker.getOrDefault("Async-Tick", Set.of()).stream()
+                .map(WeakReference::get)
+                .anyMatch(thread::equals);
+    }
+
     public static boolean isServerExecutionThread() {
-        return AsyncThreadTracker.isServerExecutionThread();
+        return isThreadInPool(Thread.currentThread());
     }
 
     public static void callEntityTick(ServerLevel world, Entity entity) {
@@ -104,7 +112,7 @@ public class ParallelProcessor {
                 entity instanceof Projectile ||
                 entity instanceof AbstractMinecart ||
                 entity instanceof ServerPlayer ||
-                BLOCKED_ENTITIES.contains(entity.getClass()) ||
+                isEntityBlocked(entity) ||
                 blacklistedEntity.contains(entityId) ||
                 AsyncConfig.synchronizedEntities.contains(EntityType.getKey(entity.getType()));
 
@@ -125,6 +133,15 @@ public class ParallelProcessor {
         if (isPortalTickRequired(entity)) {
             portalTickSyncMap.put(entityId, 39);
             return true;
+        }
+        return false;
+    }
+
+    private static boolean isEntityBlocked(Entity entity) {
+        for (Class<?> blockedClass : BLOCKED_ENTITIES) {
+            if (blockedClass.isAssignableFrom(entity.getClass())) {
+                return true;
+            }
         }
         return false;
     }
