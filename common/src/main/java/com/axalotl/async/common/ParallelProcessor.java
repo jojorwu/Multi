@@ -72,9 +72,24 @@ public class ParallelProcessor {
     }
 
     private static boolean isThreadInPool(Thread thread) {
-        return mcThreadTracker.getOrDefault("Async-Tick", Set.of()).stream()
-                .map(WeakReference::get)
-                .anyMatch(thread::equals);
+        Set<WeakReference<Thread>> threadRefs = mcThreadTracker.get("Async-Tick");
+        if (threadRefs == null) {
+            return false;
+        }
+        boolean found = false;
+        List<WeakReference<Thread>> toRemove = new ArrayList<>();
+        for (WeakReference<Thread> ref : threadRefs) {
+            Thread t = ref.get();
+            if (t == null) {
+                toRemove.add(ref);
+            } else if (t.getId() == thread.getId()) {
+                found = true;
+            }
+        }
+        if (!toRemove.isEmpty()) {
+            threadRefs.removeAll(toRemove);
+        }
+        return found;
     }
 
     public static boolean isServerExecutionThread() {
@@ -212,20 +227,7 @@ public class ParallelProcessor {
             return null;
         });
 
-        while (!allTasks.isDone()) {
-            boolean hasTask = false;
-            for (ServerLevel world : server.getAllLevels()) {
-                hasTask |= world.getChunkSource().pollTask();
-            }
-            if (!hasTask) {
-                LockSupport.parkNanos(50_000);
-            }
-        }
-
-        server.getAllLevels().forEach(world -> {
-            world.getChunkSource().pollTask();
-            world.getChunkSource().mainThreadProcessor.managedBlock(allTasks::isDone);
-        });
+        server.getAllLevels().forEach(world -> world.getChunkSource().mainThreadProcessor.managedBlock(allTasks::isDone));
     }
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
