@@ -213,20 +213,7 @@ public class ParallelProcessor {
             return null;
         });
 
-        while (!allTasks.isDone()) {
-            boolean hasTask = false;
-            for (ServerLevel world : server.getAllLevels()) {
-                hasTask |= world.getChunkSource().pollTask();
-            }
-            if (!hasTask) {
-                LockSupport.parkNanos(50_000);
-            }
-        }
-
-        server.getAllLevels().forEach(world -> {
-            world.getChunkSource().pollTask();
-            world.getChunkSource().mainThreadProcessor.managedBlock(allTasks::isDone);
-        });
+        server.getAllLevels().forEach(world -> world.getChunkSource().mainThreadProcessor.managedBlock(allTasks::isDone));
     }
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
