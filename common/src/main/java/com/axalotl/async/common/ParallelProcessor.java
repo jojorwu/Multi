@@ -49,11 +49,15 @@ public class ParallelProcessor {
             Boat.class
     );
 
+    public static void registerThread(String poolName, Thread thread) {
+        AsyncThreadTracker.registerThread(poolName, thread);
+    }
+
     public static void setupThreadPool(int parallelism, Class<?> asyncClass) {
         ForkJoinPool.ForkJoinWorkerThreadFactory threadFactory = pool -> {
             ForkJoinWorkerThread worker = ForkJoinPool.defaultForkJoinWorkerThreadFactory.newThread(pool);
             worker.setName("Async-Tick-Pool-Thread-" + threadPoolID.getAndIncrement());
-            AsyncThreadTracker.registerThread("Async-Tick", worker);
+            registerThread("Async-Tick", worker);
             worker.setDaemon(true);
             worker.setPriority(Thread.NORM_PRIORITY);
             worker.setContextClassLoader(asyncClass.getClassLoader());
@@ -63,22 +67,6 @@ public class ParallelProcessor {
         tickPool = new ForkJoinPool(parallelism, threadFactory, (t, e) ->
                 LOGGER.error("Uncaught exception in thread {}: {}", t.getName(), e), true);
         LOGGER.info("Initialized Pool with {} threads", parallelism);
-    }
-
-    public static void registerThread(String poolName, Thread thread) {
-        mcThreadTracker
-                .computeIfAbsent(poolName, key -> ConcurrentHashMap.newKeySet())
-                .add(new WeakReference<>(thread));
-    }
-
-    private static boolean isThreadInPool(Thread thread) {
-        return mcThreadTracker.getOrDefault("Async-Tick", Set.of()).stream()
-                .map(WeakReference::get)
-                .anyMatch(thread::equals);
-    }
-
-    public static boolean isServerExecutionThread() {
-        return isThreadInPool(Thread.currentThread());
     }
 
     public static boolean isServerExecutionThread() {
