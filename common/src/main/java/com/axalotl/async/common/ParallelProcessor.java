@@ -1,6 +1,7 @@
 package com.axalotl.async.common;
 
 import com.axalotl.async.common.config.AsyncConfig;
+import com.axalotl.async.common.util.AsyncThreadTracker;
 import lombok.Getter;
 import lombok.Setter;
 import net.minecraft.server.MinecraftServer;
@@ -42,7 +43,6 @@ public class ParallelProcessor {
     private static final BlockingQueue<CompletableFuture<?>> taskQueue = new LinkedBlockingQueue<>();
     private static final Set<UUID> blacklistedEntity = ConcurrentHashMap.newKeySet();
     private static final Map<UUID, Integer> portalTickSyncMap = new ConcurrentHashMap<>();
-    private static final Map<String, Set<WeakReference<Thread>>> mcThreadTracker = new ConcurrentHashMap<>();
     public static final Set<Class<?>> BLOCKED_ENTITIES = Set.of(
             FallingBlockEntity.class,
             Shulker.class,
@@ -53,7 +53,7 @@ public class ParallelProcessor {
         ForkJoinPool.ForkJoinWorkerThreadFactory threadFactory = pool -> {
             ForkJoinWorkerThread worker = ForkJoinPool.defaultForkJoinWorkerThreadFactory.newThread(pool);
             worker.setName("Async-Tick-Pool-Thread-" + threadPoolID.getAndIncrement());
-            registerThread("Async-Tick", worker);
+            AsyncThreadTracker.registerThread("Async-Tick", worker);
             worker.setDaemon(true);
             worker.setPriority(Thread.NORM_PRIORITY);
             worker.setContextClassLoader(asyncClass.getClassLoader());
@@ -72,28 +72,17 @@ public class ParallelProcessor {
     }
 
     private static boolean isThreadInPool(Thread thread) {
-        Set<WeakReference<Thread>> threadRefs = mcThreadTracker.get("Async-Tick");
-        if (threadRefs == null) {
-            return false;
-        }
-        boolean found = false;
-        List<WeakReference<Thread>> toRemove = new ArrayList<>();
-        for (WeakReference<Thread> ref : threadRefs) {
-            Thread t = ref.get();
-            if (t == null) {
-                toRemove.add(ref);
-            } else if (t.getId() == thread.getId()) {
-                found = true;
-            }
-        }
-        if (!toRemove.isEmpty()) {
-            threadRefs.removeAll(toRemove);
-        }
-        return found;
+        return mcThreadTracker.getOrDefault("Async-Tick", Set.of()).stream()
+                .map(WeakReference::get)
+                .anyMatch(thread::equals);
     }
 
     public static boolean isServerExecutionThread() {
         return isThreadInPool(Thread.currentThread());
+    }
+
+    public static boolean isServerExecutionThread() {
+        return AsyncThreadTracker.isServerExecutionThread();
     }
 
     public static void callEntityTick(ServerLevel world, Entity entity) {
