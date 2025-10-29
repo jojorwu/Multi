@@ -103,23 +103,23 @@ public class ParallelProcessor {
     }
 
     public static boolean shouldTickSynchronously(Entity entity) {
-        if (entity.level().isClientSide()) {
+        if (entity.level().isClientSide() || AsyncConfig.disabled) {
             return true;
         }
+        return isMarkedForSync(entity) || isNearPortal(entity);
+    }
 
-        UUID entityId = entity.getUUID();
-        boolean requiresSyncTick = AsyncConfig.disabled ||
-                entity instanceof Projectile ||
+    private static boolean isMarkedForSync(Entity entity) {
+        return entity instanceof Projectile ||
                 entity instanceof AbstractMinecart ||
                 entity instanceof ServerPlayer ||
                 isEntityBlocked(entity) ||
-                blacklistedEntity.contains(entityId) ||
+                blacklistedEntity.contains(entity.getUUID()) ||
                 AsyncConfig.synchronizedEntities.contains(EntityType.getKey(entity.getType()));
+    }
 
-        if (requiresSyncTick) {
-            return true;
-        }
-
+    private static boolean isNearPortal(Entity entity) {
+        UUID entityId = entity.getUUID();
         if (portalTickSyncMap.containsKey(entityId)) {
             int ticksLeft = portalTickSyncMap.get(entityId);
             if (ticksLeft > 0) {
@@ -129,7 +129,6 @@ public class ParallelProcessor {
                 portalTickSyncMap.remove(entityId);
             }
         }
-
         if (isPortalTickRequired(entity)) {
             portalTickSyncMap.put(entityId, 39);
             return true;
@@ -213,7 +212,20 @@ public class ParallelProcessor {
             return null;
         });
 
-        server.getAllLevels().forEach(world -> world.getChunkSource().mainThreadProcessor.managedBlock(allTasks::isDone));
+        while (!allTasks.isDone()) {
+            boolean hasTask = false;
+            for (ServerLevel world : server.getAllLevels()) {
+                hasTask |= world.getChunkSource().pollTask();
+            }
+            if (!hasTask) {
+                LockSupport.parkNanos(50_000);
+            }
+        }
+
+        server.getAllLevels().forEach(world -> {
+            world.getChunkSource().pollTask();
+            world.getChunkSource().mainThreadProcessor.managedBlock(allTasks::isDone);
+        });
     }
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
