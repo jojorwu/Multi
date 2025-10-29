@@ -227,7 +227,7 @@ public class ParallelProcessor {
             return null;
         });
 
-        server.getAllLevels().forEach(world -> world.getChunkSource().mainThreadProcessor.managedBlock(allTasks::isDone));
+        server.managedBlock(allTasks::isDone);
     }
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
