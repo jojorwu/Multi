@@ -46,8 +46,8 @@ public class AsyncConfig {
         CONFIG.set("disabled", disabled);
         CONFIG.setComment("disabled", "Enables parallel processing of entity.");
 
-        CONFIG.set("paraMax", paraMax);
-        CONFIG.setComment("paraMax", "Maximum number of threads to use for parallel processing. Set to -1 to use default value. Note: If 'virtualThreads' is enabled, this setting will be ignored.");
+        CONFIG.set("parallelism", parallelismString);
+        CONFIG.setComment("parallelism", "Maximum number of threads to use for parallel processing. Set to -1 to use default value. Note: If 'virtualThreads' is enabled, this setting will be ignored.");
 
         CONFIG.set("synchronizedEntities", synchronizedEntities.stream().map(ResourceLocation::toString).toList());
         CONFIG.setComment("synchronizedEntities", "List of entity class for sync processing.");
@@ -65,14 +65,14 @@ public class AsyncConfig {
     private static void loadConfigValues() {
         Set<String> processedKeys = new HashSet<>(List.of(
                 "disabled",
-                "paraMax",
+                "parallelism",
                 "synchronizedEntities",
                 "enableAsyncSpawn",
                 "enableAsyncRandomTicks"
         ));
 
         disabled = CONFIG.getOrElse("disabled", disabled);
-        paraMax = CONFIG.getOrElse("paraMax", paraMax);
+        parallelismString = CONFIG.getOrElse("parallelism", parallelismString);
         enableAsyncSpawn = CONFIG.getOrElse("enableAsyncSpawn", enableAsyncSpawn);
         enableAsyncRandomTicks = CONFIG.getOrElse("enableAsyncRandomTicks", enableAsyncRandomTicks);
 
@@ -108,7 +108,7 @@ public class AsyncConfig {
 
     private static void setDefaultValues() {
         disabled = false;
-        paraMax = -1;
+        parallelismString = "-1";
         enableAsyncSpawn = true;
         enableAsyncRandomTicks = false;
         synchronizedEntities = getDefaultSynchronizedEntities();

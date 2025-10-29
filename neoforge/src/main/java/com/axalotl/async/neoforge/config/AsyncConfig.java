@@ -12,7 +12,7 @@ public class AsyncConfig {
     public static final ModConfigSpec SPEC;
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
     private static final ModConfigSpec.ConfigValue<Boolean> disabled;
-    private static final ModConfigSpec.ConfigValue<Integer> paraMax;
+    private static final ModConfigSpec.ConfigValue<String> parallelism;
     private static final ModConfigSpec.ConfigValue<List<String>> synchronizedEntities;
     private static final ModConfigSpec.ConfigValue<Boolean> enableAsyncSpawn;
     private static final ModConfigSpec.ConfigValue<Boolean> enableAsyncRandomTicks;
@@ -23,8 +23,8 @@ public class AsyncConfig {
         disabled = BUILDER.comment("Enables parallel processing of entity.")
                 .define("disabled", com.axalotl.async.common.config.AsyncConfig.disabled);
 
-        paraMax = BUILDER.comment("Maximum number of threads to use for parallel processing. Set to -1 to use default value.")
-                .define("paraMax", com.axalotl.async.common.config.AsyncConfig.paraMax);
+        parallelism = BUILDER.comment("Maximum number of threads to use for parallel processing. Set to -1 to use default value.")
+                .define("parallelism", com.axalotl.async.common.config.AsyncConfig.parallelismString);
 
         synchronizedEntities = BUILDER.comment("List of entity class for sync processing.")
                 .define("synchronizedEntities", new java.util.ArrayList<>(com.axalotl.async.common.config.AsyncConfig.synchronizedEntities.stream().map(ResourceLocation::toString).toList()));
@@ -42,7 +42,7 @@ public class AsyncConfig {
 
     public static void loadConfig() {
         com.axalotl.async.common.config.AsyncConfig.disabled = disabled.get();
-        com.axalotl.async.common.config.AsyncConfig.paraMax = paraMax.get();
+        com.axalotl.async.common.config.AsyncConfig.parallelismString = parallelism.get();
         com.axalotl.async.common.config.AsyncConfig.enableAsyncSpawn = enableAsyncSpawn.get();
         com.axalotl.async.common.config.AsyncConfig.enableAsyncRandomTicks = enableAsyncRandomTicks.get();
         com.axalotl.async.common.config.AsyncConfig.synchronizedEntities = new HashSet<>();
@@ -63,7 +63,7 @@ public class AsyncConfig {
 
     public static void saveConfig() {
         disabled.set(com.axalotl.async.common.config.AsyncConfig.disabled);
-        paraMax.set(com.axalotl.async.common.config.AsyncConfig.paraMax);
+        parallelism.set(com.axalotl.async.common.config.AsyncConfig.parallelismString);
         enableAsyncSpawn.set(com.axalotl.async.common.config.AsyncConfig.enableAsyncSpawn);
         enableAsyncRandomTicks.set(com.axalotl.async.common.config.AsyncConfig.enableAsyncRandomTicks);
         synchronizedEntities.set(new java.util.ArrayList<>(com.axalotl.async.common.config.AsyncConfig.synchronizedEntities.stream().map(ResourceLocation::toString).toList()));

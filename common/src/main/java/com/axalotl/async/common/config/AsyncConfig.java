@@ -11,7 +11,8 @@ public class AsyncConfig {
     public static final Logger LOGGER = LoggerFactory.getLogger("Async Config");
 
     public static boolean disabled = false;
-    public static int paraMax = -1;
+    public static int parallelism = -1;
+    public static String parallelismString = "-1";
     public static boolean enableAsyncSpawn = true;
     public static boolean enableAsyncRandomTicks = false;
 
@@ -26,8 +27,14 @@ public class AsyncConfig {
     }
 
     public static int getParallelism() {
-        if (paraMax <= 0) return Runtime.getRuntime().availableProcessors();
-        return Math.max(1, Math.min(Runtime.getRuntime().availableProcessors(), paraMax));
+        try {
+            parallelism = Integer.parseInt(parallelismString);
+        } catch (NumberFormatException e) {
+            LOGGER.warn("Invalid value for parallelism: '{}'. Using default value.", parallelismString);
+            parallelism = -1;
+        }
+        if (parallelism <= 0) return Runtime.getRuntime().availableProcessors();
+        return Math.max(1, Math.min(Runtime.getRuntime().availableProcessors(), parallelism));
     }
 
     public static void syncEntity(ResourceLocation entityId) {
