@@ -76,7 +76,7 @@ public class AsyncConfig {
         enableAsyncSpawn = CONFIG.getOrElse("enableAsyncSpawn", enableAsyncSpawn);
         enableAsyncRandomTicks = CONFIG.getOrElse("enableAsyncRandomTicks", enableAsyncRandomTicks);
 
-        List<String> ids = synchronizedEntities.stream().map(ResourceLocation::toString).toList();
+        List<String> ids = CONFIG.getOrElse("synchronizedEntities", synchronizedEntities.stream().map(ResourceLocation::toString).toList());
         HashSet<ResourceLocation> set = new HashSet<>();
 
         for (String id : ids) {
@@ -85,23 +85,16 @@ public class AsyncConfig {
                 set.add(rl);
             }
         }
+        com.axalotl.async.common.config.AsyncConfig.synchronizedEntities = set;
 
-        com.axalotl.async.common.config.AsyncConfig.synchronizedEntities = set.isEmpty()
-                ? getDefaultSynchronizedEntities()
-                : set;
-
-        Set<String> keysToRemove = new HashSet<>();
-        for (CommentedConfig.Entry entry : CONFIG.entrySet()) {
-            String key = entry.getKey();
-            if (!processedKeys.contains(key)) {
-                keysToRemove.add(key);
+        // Clean up unused keys from the config file
+        CONFIG.entrySet().removeIf(entry -> {
+            boolean shouldRemove = !processedKeys.contains(entry.getKey());
+            if (shouldRemove) {
+                LOGGER.warn("Removing unused configuration key: {}", entry.getKey());
             }
-        }
-
-        for (String key : keysToRemove) {
-            LOGGER.warn("Removing unused configuration key: {}", key);
-            CONFIG.remove(key);
-        }
+            return shouldRemove;
+        });
 
         CONFIG.save();
     }
