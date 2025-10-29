@@ -72,9 +72,24 @@ public class ParallelProcessor {
     }
 
     private static boolean isThreadInPool(Thread thread) {
-        return mcThreadTracker.getOrDefault("Async-Tick", Set.of()).stream()
-                .map(WeakReference::get)
-                .anyMatch(thread::equals);
+        Set<WeakReference<Thread>> threadRefs = mcThreadTracker.get("Async-Tick");
+        if (threadRefs == null) {
+            return false;
+        }
+        boolean found = false;
+        List<WeakReference<Thread>> toRemove = new ArrayList<>();
+        for (WeakReference<Thread> ref : threadRefs) {
+            Thread t = ref.get();
+            if (t == null) {
+                toRemove.add(ref);
+            } else if (t.getId() == thread.getId()) {
+                found = true;
+            }
+        }
+        if (!toRemove.isEmpty()) {
+            threadRefs.removeAll(toRemove);
+        }
+        return found;
     }
 
     public static boolean isServerExecutionThread() {
