@@ -10,6 +10,8 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
+import com.axalotl.async.common.util.ChunkSaveMetrics;
+import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.EntityType;
 import org.apache.logging.log4j.LogManager;
@@ -53,6 +55,15 @@ public class StatsCommand {
                                     showEntityStats(cmdCtx.getSource(), count);
                                     return 1;
                                 }))));
+    }
+
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        AsyncCommand.register(dispatcher);
+        dispatcher.register(literal("async").then(literal("chunkstats")
+                .executes(context -> {
+                    ChunkSaveMetrics.printMetrics();
+                    return 1;
+                })));
     }
 
     private static void showGeneralStats(CommandSourceStack source) {
