@@ -1,4 +1,4 @@
-package com.axalotl.async.neoforge.mixin.world;
+package com.axalotl.async.common.mixin.world;
 
 import com.axalotl.async.common.ParallelProcessor;
 import com.axalotl.async.common.config.AsyncConfig;
@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import java.util.concurrent.CompletableFuture;
 
 @Mixin(ChunkMap.class)
-public class ChunkMapMixin {
+public class ChunkMapGenerationMixin {
     @Redirect(method = "scheduleChunkGenerationTask", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ChunkHolder;scheduleChunkGenerationTask(Lnet/minecraft/world/level/chunk/status/ChunkStatus;Lnet/minecraft/server/level/ChunkMap;)Ljava/util/concurrent/CompletableFuture;"))
     private CompletableFuture<ChunkResult<ChunkAccess>> onScheduleChunkGenerationTask(ChunkHolder holder, ChunkStatus status, ChunkMap map) {
         if (AsyncConfig.disabled) {

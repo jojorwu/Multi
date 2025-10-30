@@ -58,6 +58,12 @@ public class AsyncConfig {
         CONFIG.set("enableAsyncRandomTicks", enableAsyncRandomTicks);
         CONFIG.setComment("enableAsyncRandomTicks", "Experimental! Enables async processing of random ticks.");
 
+        CONFIG.set("chunkIOParaMax", chunkIOParaMax);
+        CONFIG.setComment("chunkIOParaMax", "Maximum number of threads to use for chunk IO. Set to -1 to use default value.");
+
+        CONFIG.set("chunkGenParaMax", chunkGenParaMax);
+        CONFIG.setComment("chunkGenParaMax", "Maximum number of threads to use for chunk generation. Set to -1 to use default value.");
+
         CONFIG.save();
         LOGGER.info("Configuration saved successfully.");
     }
@@ -66,6 +72,8 @@ public class AsyncConfig {
         Set<String> processedKeys = new HashSet<>(List.of(
                 "disabled",
                 "paraMax",
+                "chunkIOParaMax",
+                "chunkGenParaMax",
                 "synchronizedEntities",
                 "enableAsyncSpawn",
                 "enableAsyncRandomTicks"
@@ -73,16 +81,20 @@ public class AsyncConfig {
 
         disabled = CONFIG.getOrElse("disabled", disabled);
         paraMax = CONFIG.getOrElse("paraMax", paraMax);
+        chunkIOParaMax = CONFIG.getOrElse("chunkIOParaMax", chunkIOParaMax);
+        chunkGenParaMax = CONFIG.getOrElse("chunkGenParaMax", chunkGenParaMax);
         enableAsyncSpawn = CONFIG.getOrElse("enableAsyncSpawn", enableAsyncSpawn);
         enableAsyncRandomTicks = CONFIG.getOrElse("enableAsyncRandomTicks", enableAsyncRandomTicks);
 
-        List<String> ids = synchronizedEntities.stream().map(ResourceLocation::toString).toList();
+        List<String> ids = CONFIG.getOrElse("synchronizedEntities", synchronizedEntities.stream().map(ResourceLocation::toString).toList());
         HashSet<ResourceLocation> set = new HashSet<>();
 
         for (String id : ids) {
             ResourceLocation rl = ResourceLocation.tryParse(id);
             if (rl != null) {
                 set.add(rl);
+            } else {
+                LOGGER.warn("Invalid resource location in synchronizedEntities config: {}", id);
             }
         }
 
@@ -109,6 +121,8 @@ public class AsyncConfig {
     private static void setDefaultValues() {
         disabled = false;
         paraMax = -1;
+        chunkIOParaMax = -1;
+        chunkGenParaMax = -1;
         enableAsyncSpawn = true;
         enableAsyncRandomTicks = false;
         synchronizedEntities = getDefaultSynchronizedEntities();

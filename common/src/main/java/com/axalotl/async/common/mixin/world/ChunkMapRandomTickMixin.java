@@ -1,4 +1,4 @@
-package com.axalotl.async.common.mixin.server;
+package com.axalotl.async.common.mixin.world;
 
 import com.axalotl.async.common.ParallelProcessor;
 import com.axalotl.async.common.config.AsyncConfig;
