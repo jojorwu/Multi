@@ -39,9 +39,9 @@ public abstract class EntityLookupMixin<T extends EntityAccess> {
         byUuid = ConcurrentCollections.newHashMap();
     }
 
-    @WrapMethod(method = "add")
-    private synchronized void add(T entity, Operation<Void> original) {
-        original.call(entity);
+    @Redirect(method = "add", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;warn(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V"))
+    private void onAdd(Logger instance, String s, Object o, Object o1) {
+        //Suppress warning
     }
 
     @WrapMethod(method = "getEntity(Ljava/util/UUID;)Lnet/minecraft/world/level/entity/EntityAccess;")

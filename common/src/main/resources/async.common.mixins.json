@@ -50,7 +50,7 @@
     "entity.spawn.PotentialCalculatorMixin",
     "lithium.LithiumServerChunkCacheMixin",
     "lithium.LithiumServerLevel",
-    "server.ChunkMapMixin",
+    "server.ChunkMapRandomTickMixin",
     "server.ChunkMapTrackedEntityMixin",
     "server.MinecraftServerMixin",
     "server.PersistentEntitySectionManagerCallbackMixin",
@@ -74,8 +74,7 @@
     "world.RandomSequencesMixin",
     "world.ScoreboardMixin",
     "world.SectionStorageMixin",
-    "world.ServerLevelMixin",
-    "world.ChunkMapMixin"
+    "world.ServerLevelMixin"
   ],
   "client": [],
   "server": [

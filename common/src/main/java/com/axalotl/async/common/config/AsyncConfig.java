@@ -13,6 +13,7 @@ public class AsyncConfig {
     public static boolean disabled = false;
     public static int paraMax = -1;
     public static int chunkIOParaMax = -1;
+    public static int chunkGenParaMax = -1;
     public static boolean enableAsyncSpawn = true;
     public static boolean enableAsyncRandomTicks = false;
 
@@ -24,6 +25,11 @@ public class AsyncConfig {
     public static int getChunkIOParaMax() {
         if (chunkIOParaMax <= 0) return 4;
         return Math.max(1, chunkIOParaMax);
+    }
+
+    public static int getChunkGenParaMax() {
+        if (chunkGenParaMax <= 0) return Runtime.getRuntime().availableProcessors();
+        return Math.max(1, Math.min(Runtime.getRuntime().availableProcessors(), chunkGenParaMax));
     }
 
     public static Set<ResourceLocation> synchronizedEntities = getDefaultSynchronizedEntities();

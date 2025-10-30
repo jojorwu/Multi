@@ -41,6 +41,7 @@ public class AsyncNeoForge {
         ParallelProcessor.setServer(event.getServer());
         ParallelProcessor.setupThreadPool(getParallelism(), this.getClass());
         ParallelProcessor.setupChunkIOPool(com.axalotl.async.common.config.AsyncConfig.getChunkIOParaMax(), this.getClass());
+        ParallelProcessor.setupChunkGenPool(com.axalotl.async.common.config.AsyncConfig.getChunkGenParaMax(), this.getClass());
     }
 
     @SubscribeEvent
