@@ -72,24 +72,9 @@ public class ParallelProcessor {
     }
 
     private static boolean isThreadInPool(Thread thread) {
-        Set<WeakReference<Thread>> threadRefs = mcThreadTracker.get("Async-Tick");
-        if (threadRefs == null) {
-            return false;
-        }
-        boolean found = false;
-        List<WeakReference<Thread>> toRemove = new ArrayList<>();
-        for (WeakReference<Thread> ref : threadRefs) {
-            Thread t = ref.get();
-            if (t == null) {
-                toRemove.add(ref);
-            } else if (t.getId() == thread.getId()) {
-                found = true;
-            }
-        }
-        if (!toRemove.isEmpty()) {
-            threadRefs.removeAll(toRemove);
-        }
-        return found;
+        return mcThreadTracker.getOrDefault("Async-Tick", Set.of()).stream()
+                .map(WeakReference::get)
+                .anyMatch(thread::equals);
     }
 
     public static boolean isServerExecutionThread() {
@@ -118,23 +103,23 @@ public class ParallelProcessor {
     }
 
     public static boolean shouldTickSynchronously(Entity entity) {
-        if (entity.level().isClientSide() || AsyncConfig.disabled) {
+        if (entity.level().isClientSide()) {
             return true;
         }
-        return isMarkedForSync(entity) || isNearPortal(entity);
-    }
 
-    private static boolean isMarkedForSync(Entity entity) {
-        return entity instanceof Projectile ||
+        UUID entityId = entity.getUUID();
+        boolean requiresSyncTick = AsyncConfig.disabled ||
+                entity instanceof Projectile ||
                 entity instanceof AbstractMinecart ||
                 entity instanceof ServerPlayer ||
-                isEntityBlocked(entity) ||
-                blacklistedEntity.contains(entity.getUUID()) ||
+                BLOCKED_ENTITIES.contains(entity.getClass()) ||
+                blacklistedEntity.contains(entityId) ||
                 AsyncConfig.synchronizedEntities.contains(EntityType.getKey(entity.getType()));
-    }
 
-    private static boolean isNearPortal(Entity entity) {
-        UUID entityId = entity.getUUID();
+        if (requiresSyncTick) {
+            return true;
+        }
+
         if (portalTickSyncMap.containsKey(entityId)) {
             int ticksLeft = portalTickSyncMap.get(entityId);
             if (ticksLeft > 0) {
@@ -144,18 +129,10 @@ public class ParallelProcessor {
                 portalTickSyncMap.remove(entityId);
             }
         }
+
         if (isPortalTickRequired(entity)) {
             portalTickSyncMap.put(entityId, 39);
             return true;
-        }
-        return false;
-    }
-
-    private static boolean isEntityBlocked(Entity entity) {
-        for (Class<?> blockedClass : BLOCKED_ENTITIES) {
-            if (blockedClass.isAssignableFrom(entity.getClass())) {
-                return true;
-            }
         }
         return false;
     }
@@ -227,7 +204,20 @@ public class ParallelProcessor {
             return null;
         });
 
-        server.managedBlock(allTasks::isDone);
+        while (!allTasks.isDone()) {
+            boolean hasTask = false;
+            for (ServerLevel world : server.getAllLevels()) {
+                hasTask |= world.getChunkSource().pollTask();
+            }
+            if (!hasTask) {
+                LockSupport.parkNanos(50_000);
+            }
+        }
+
+        server.getAllLevels().forEach(world -> {
+            world.getChunkSource().pollTask();
+            world.getChunkSource().mainThreadProcessor.managedBlock(allTasks::isDone);
+        });
     }
 
     @SuppressWarnings("ResultOfMethodCallIgnored")

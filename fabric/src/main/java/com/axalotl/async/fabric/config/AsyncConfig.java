@@ -46,8 +46,8 @@ public class AsyncConfig {
         CONFIG.set("disabled", disabled);
         CONFIG.setComment("disabled", "Enables parallel processing of entity.");
 
-        CONFIG.set("parallelism", parallelismString);
-        CONFIG.setComment("parallelism", "Maximum number of threads to use for parallel processing. Set to -1 to use default value. Note: If 'virtualThreads' is enabled, this setting will be ignored.");
+        CONFIG.set("paraMax", paraMax);
+        CONFIG.setComment("paraMax", "Maximum number of threads to use for parallel processing. Set to -1 to use default value. Note: If 'virtualThreads' is enabled, this setting will be ignored.");
 
         CONFIG.set("synchronizedEntities", synchronizedEntities.stream().map(ResourceLocation::toString).toList());
         CONFIG.setComment("synchronizedEntities", "List of entity class for sync processing.");
@@ -65,18 +65,18 @@ public class AsyncConfig {
     private static void loadConfigValues() {
         Set<String> processedKeys = new HashSet<>(List.of(
                 "disabled",
-                "parallelism",
+                "paraMax",
                 "synchronizedEntities",
                 "enableAsyncSpawn",
                 "enableAsyncRandomTicks"
         ));
 
         disabled = CONFIG.getOrElse("disabled", disabled);
-        parallelismString = CONFIG.getOrElse("parallelism", parallelismString);
+        paraMax = CONFIG.getOrElse("paraMax", paraMax);
         enableAsyncSpawn = CONFIG.getOrElse("enableAsyncSpawn", enableAsyncSpawn);
         enableAsyncRandomTicks = CONFIG.getOrElse("enableAsyncRandomTicks", enableAsyncRandomTicks);
 
-        List<String> ids = CONFIG.getOrElse("synchronizedEntities", synchronizedEntities.stream().map(ResourceLocation::toString).toList());
+        List<String> ids = synchronizedEntities.stream().map(ResourceLocation::toString).toList();
         HashSet<ResourceLocation> set = new HashSet<>();
 
         for (String id : ids) {
@@ -85,23 +85,30 @@ public class AsyncConfig {
                 set.add(rl);
             }
         }
-        com.axalotl.async.common.config.AsyncConfig.synchronizedEntities = set;
 
-        // Clean up unused keys from the config file
-        CONFIG.entrySet().removeIf(entry -> {
-            boolean shouldRemove = !processedKeys.contains(entry.getKey());
-            if (shouldRemove) {
-                LOGGER.warn("Removing unused configuration key: {}", entry.getKey());
+        com.axalotl.async.common.config.AsyncConfig.synchronizedEntities = set.isEmpty()
+                ? getDefaultSynchronizedEntities()
+                : set;
+
+        Set<String> keysToRemove = new HashSet<>();
+        for (CommentedConfig.Entry entry : CONFIG.entrySet()) {
+            String key = entry.getKey();
+            if (!processedKeys.contains(key)) {
+                keysToRemove.add(key);
             }
-            return shouldRemove;
-        });
+        }
+
+        for (String key : keysToRemove) {
+            LOGGER.warn("Removing unused configuration key: {}", key);
+            CONFIG.remove(key);
+        }
 
         CONFIG.save();
     }
 
     private static void setDefaultValues() {
         disabled = false;
-        parallelismString = "-1";
+        paraMax = -1;
         enableAsyncSpawn = true;
         enableAsyncRandomTicks = false;
         synchronizedEntities = getDefaultSynchronizedEntities();
