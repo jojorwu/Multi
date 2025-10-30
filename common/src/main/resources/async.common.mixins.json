@@ -74,7 +74,8 @@
     "world.RandomSequencesMixin",
     "world.ScoreboardMixin",
     "world.SectionStorageMixin",
-    "world.ServerLevelMixin"
+    "world.ServerLevelMixin",
+    "world.ChunkMapMixin"
   ],
   "client": [],
   "server": [

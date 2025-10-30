@@ -39,6 +39,7 @@ public class ParallelProcessor {
     public static final AtomicInteger currentEntities = new AtomicInteger();
     private static final AtomicInteger threadPoolID = new AtomicInteger();
     public static ExecutorService tickPool;
+    public static ExecutorService chunkIOPool;
     private static final BlockingQueue<CompletableFuture<?>> taskQueue = new LinkedBlockingQueue<>();
     private static final Set<UUID> blacklistedEntity = ConcurrentHashMap.newKeySet();
     private static final Map<UUID, Integer> portalTickSyncMap = new ConcurrentHashMap<>();
@@ -220,6 +221,22 @@ public class ParallelProcessor {
         });
     }
 
+    public static void setupChunkIOPool(int paraMax, Class<?> asyncClass) {
+        ForkJoinPool.ForkJoinWorkerThreadFactory threadFactory = pool -> {
+            ForkJoinWorkerThread worker = ForkJoinPool.defaultForkJoinWorkerThreadFactory.newThread(pool);
+            worker.setName("Async-Chunk-IO-Pool-Thread-" + threadPoolID.getAndIncrement());
+            registerThread("Async-Chunk-IO", worker);
+            worker.setDaemon(true);
+            worker.setPriority(Thread.NORM_PRIORITY - 1);
+            worker.setContextClassLoader(asyncClass.getClassLoader());
+            return worker;
+        };
+
+        chunkIOPool = new ForkJoinPool(paraMax, threadFactory, (t, e) ->
+                LOGGER.error("Uncaught exception in thread {}: {}", t.getName(), e), true);
+        LOGGER.info("Initialized Chunk IO Pool with {} threads", paraMax);
+    }
+
     @SuppressWarnings("ResultOfMethodCallIgnored")
     public static void stop() {
         if (tickPool != null) {
@@ -227,6 +244,14 @@ public class ParallelProcessor {
             tickPool.shutdown();
             try {
                 tickPool.awaitTermination(60L, TimeUnit.SECONDS);
+            } catch (InterruptedException ignored) {
+            }
+        }
+        if (chunkIOPool != null) {
+            LOGGER.info("Waiting for Async chunkIOPool to shutdown...");
+            chunkIOPool.shutdown();
+            try {
+                chunkIOPool.awaitTermination(60L, TimeUnit.SECONDS);
             } catch (InterruptedException ignored) {
             }
         }
