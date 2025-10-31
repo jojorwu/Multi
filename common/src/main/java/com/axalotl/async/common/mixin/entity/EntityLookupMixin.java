@@ -39,6 +39,11 @@ public abstract class EntityLookupMixin<T extends EntityAccess> {
         byUuid = ConcurrentCollections.newHashMap();
     }
 
+    @WrapMethod(method = "add")
+    private synchronized void add(T entity, Operation<Void> original) {
+        original.call(entity);
+    }
+
     @WrapMethod(method = "getEntity(Ljava/util/UUID;)Lnet/minecraft/world/level/entity/EntityAccess;")
     private T getEntity(UUID uuid, Operation<T> original) {
         return uuid == null ? null : original.call(uuid);
