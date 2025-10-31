@@ -25,7 +25,7 @@ public abstract class EntityMixin {
     public abstract BlockPos blockPosition();
 
     @Unique
-    private static final Object async$lock = new Object();
+    private final Object async$lock = new Object();
 
     @WrapMethod(method = "setRemoved")
     private void setRemoved(Entity.RemovalReason reason, Operation<Void> original) {
