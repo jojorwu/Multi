@@ -1,19 +1,19 @@
-package com.axalotl.async.common.mixin.world;
+package com.axalotl.async.fabric.mixin.utils;
 
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
-class BlockMixinLockingTest {
+class ClassInstanceMultiMapMixinLockingTest {
 
-    private static class OriginalBlock {
+    private static class OriginalClassInstanceMultiMap {
         private static final Object async$lock = new Object();
         public Object getLock() {
             return async$lock;
         }
     }
 
-    private static class CorrectedBlock {
+    private static class CorrectedClassInstanceMultiMap {
         private final Object async$lock = new Object();
         public Object getLock() {
             return async$lock;
@@ -23,12 +23,12 @@ class BlockMixinLockingTest {
     @Test
     void originalLogic_whenCreatingTwoInstances_shouldUseSameLock() {
         // Arrange
-        OriginalBlock block1 = new OriginalBlock();
-        OriginalBlock block2 = new OriginalBlock();
+        OriginalClassInstanceMultiMap map1 = new OriginalClassInstanceMultiMap();
+        OriginalClassInstanceMultiMap map2 = new OriginalClassInstanceMultiMap();
 
         // Act
-        Object lock1 = block1.getLock();
-        Object lock2 = block2.getLock();
+        Object lock1 = map1.getLock();
+        Object lock2 = map2.getLock();
 
         // Assert
         assertSame(lock1, lock2, "The original logic should use the same lock for both instances.");
@@ -37,12 +37,12 @@ class BlockMixinLockingTest {
     @Test
     void correctedLogic_whenCreatingTwoInstances_shouldUseDifferentLocks() {
         // Arrange
-        CorrectedBlock block1 = new CorrectedBlock();
-        CorrectedBlock block2 = new CorrectedBlock();
+        CorrectedClassInstanceMultiMap map1 = new CorrectedClassInstanceMultiMap();
+        CorrectedClassInstanceMultiMap map2 = new CorrectedClassInstanceMultiMap();
 
         // Act
-        Object lock1 = block1.getLock();
-        Object lock2 = block2.getLock();
+        Object lock1 = map1.getLock();
+        Object lock2 = map2.getLock();
 
         // Assert
         assertNotSame(lock1, lock2, "The corrected logic should use different locks for each instance.");

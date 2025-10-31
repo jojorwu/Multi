@@ -19,7 +19,7 @@ import java.util.stream.Collector;
 public abstract class ClassInstanceMultiMapMixin<T> extends AbstractCollection<T> {
 
     @Unique
-    private static final Object async$lock = new Object();
+    private final Object async$lock = new Object();
 
     @Shadow
     private final Map<Class<?>, List<T>> byClass = new ConcurrentHashMap<>();
