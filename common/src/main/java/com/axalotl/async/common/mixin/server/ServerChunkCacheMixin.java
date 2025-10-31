@@ -43,13 +43,10 @@ public abstract class ServerChunkCacheMixin extends ChunkSource {
             final ChunkHolder holder = this.getVisibleChunkIfPresent(ChunkPos.asLong(x, z));
             if (holder != null) {
                 final CompletableFuture<ChunkResult<ChunkAccess>> future = holder.scheduleChunkGenerationTask(leastStatus, this.chunkMap);
-                if (future.isDone()) {
-                    ChunkAccess chunk = future.getNow(ChunkHolder.UNLOADED_CHUNK).orElse(null);
-                    if (chunk instanceof ImposterProtoChunk readOnlyChunk) chunk = readOnlyChunk.getWrapped();
-                    if (chunk != null) {
-                        cir.setReturnValue(chunk);
-                        return;
-                    }
+                ChunkAccess chunk = future.join().orElse(null);
+                if (chunk instanceof ImposterProtoChunk readOnlyChunk) chunk = readOnlyChunk.getWrapped();
+                if (chunk != null) {
+                    cir.setReturnValue(chunk);
                 }
             }
         }
@@ -61,10 +58,9 @@ public abstract class ServerChunkCacheMixin extends ChunkSource {
             final ChunkHolder holder = this.getVisibleChunkIfPresent(ChunkPos.asLong(chunkX, chunkZ));
             if (holder != null) {
                 final CompletableFuture<ChunkResult<ChunkAccess>> future = holder.scheduleChunkGenerationTask(ChunkStatus.FULL, this.chunkMap);
-                ChunkAccess chunk = future.getNow(ChunkHolder.UNLOADED_CHUNK).orElse(null);
+                ChunkAccess chunk = future.join().orElse(null);
                 if (chunk instanceof LevelChunk worldChunk) {
                     cir.setReturnValue(worldChunk);
-                    return;
                 }
             }
         }
