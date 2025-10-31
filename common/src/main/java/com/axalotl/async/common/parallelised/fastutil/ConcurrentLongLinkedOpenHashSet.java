@@ -67,16 +67,14 @@ public class ConcurrentLongLinkedOpenHashSet extends LongLinkedOpenHashSet {
 
     @Override
     public long removeFirstLong() {
-        long first = firstLong();
-        backing.remove(first);
-        return first;
+        return Optional.ofNullable(backing.pollFirst())
+                .orElseThrow(() -> new NoSuchElementException("Set is empty"));
     }
 
     @Override
     public long removeLastLong() {
-        long last = lastLong();
-        backing.remove(last);
-        return last;
+        return Optional.ofNullable(backing.pollLast())
+                .orElseThrow(() -> new NoSuchElementException("Set is empty"));
     }
 
     @Override
