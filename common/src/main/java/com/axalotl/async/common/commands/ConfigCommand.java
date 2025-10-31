@@ -55,7 +55,7 @@ public class ConfigCommand {
                                                 .append(Component.literal("Error entity class ").withStyle(style -> style.withColor(ChatFormatting.RED)))
                                                 .append(Component.literal(id.toString()).withStyle(style -> style.withColor(ChatFormatting.RED)))
                                                 .append(Component.literal(" is already synchronized.").withStyle(style -> style.withColor(ChatFormatting.RED)));
-                                        cmdCtx.getSource().sendSuccess(() -> message, true);
+                                        cmdCtx.getSource().sendFailure(message);
                                         return 1;
                                     }
                                     AsyncConfig.syncEntity(id);
