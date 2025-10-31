@@ -14,7 +14,8 @@ public class ChunkSaveMetrics {
         ParallelProcessor.LOGGER.info("--- Chunk Save Metrics ---");
         ParallelProcessor.LOGGER.info("Chunks saved: " + chunksSaved.get());
         if (chunksSaved.get() > 0) {
-            ParallelProcessor.LOGGER.info("Average save time: " + (totalSaveTime.get() / chunksSaved.get()) + "ms");
+            double averageTime = (double) totalSaveTime.get() / chunksSaved.get();
+            ParallelProcessor.LOGGER.info("Average save time: " + String.format("%.2f", averageTime) + "ms");
         }
         ParallelProcessor.LOGGER.info("Errors: " + errors.get());
         ParallelProcessor.LOGGER.info("--------------------------");
