@@ -280,6 +280,7 @@ public class ParallelProcessor {
             } catch (InterruptedException ignored) {
             }
         }
+        mcThreadTracker.clear();
     }
 
     private static void logEntityError(String message, Entity entity, Throwable e) {
