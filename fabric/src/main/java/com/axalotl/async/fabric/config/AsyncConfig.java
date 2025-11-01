@@ -98,9 +98,7 @@ public class AsyncConfig {
             }
         }
 
-        com.axalotl.async.common.config.AsyncConfig.synchronizedEntities = set.isEmpty()
-                ? getDefaultSynchronizedEntities()
-                : set;
+        com.axalotl.async.common.config.AsyncConfig.synchronizedEntities = set;
 
         Set<String> keysToRemove = new HashSet<>();
         for (CommentedConfig.Entry entry : CONFIG.entrySet()) {
