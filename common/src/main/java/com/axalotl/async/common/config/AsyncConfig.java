@@ -32,7 +32,7 @@ public class AsyncConfig {
         return Math.max(1, Math.min(Runtime.getRuntime().availableProcessors(), chunkGenParaMax));
     }
 
-    public static Set<ResourceLocation> synchronizedEntities = getDefaultSynchronizedEntities();
+    public static Set<ResourceLocation> synchronizedEntities = new HashSet<>(getDefaultSynchronizedEntities());
 
     public static Set<ResourceLocation> getDefaultSynchronizedEntities() {
         return Set.of(
