@@ -60,7 +60,6 @@
     "utils.LockHelperMixin",
     "utils.ShufflingListMixin",
     "utils.SyncAllMixin",
-    "utils.ThreadingDetectorMixin",
     "vmp.VMPChunkMapMixin",
     "world.BlockMixin",
     "world.ChunkHolderMixin",
