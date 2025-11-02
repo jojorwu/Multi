@@ -89,83 +89,96 @@ public class StatsCommand {
     private static void showEntityStats(CommandSourceStack source, int topCount) {
         MinecraftServer server = source.getServer();
         server.execute(() -> {
-            Map<EntityType<?>, Integer> entityTypeCounts = new HashMap<>();
-            Map<EntityType<?>, Integer> asyncEntityTypeCounts = new HashMap<>();
-            AtomicInteger totalEntities = new AtomicInteger(0);
-            AtomicInteger totalAsyncEntities = new AtomicInteger(0);
-
-            MutableComponent message = prefix.copy()
-                    .append(Component.literal("Entity Statistics ").withStyle(style -> style.withColor(ChatFormatting.GOLD)));
-
-            server.getAllLevels().forEach(world -> {
-                String worldName = world.dimensionTypeRegistration().getRegisteredName();
-                AtomicInteger worldCount = new AtomicInteger(0);
-                AtomicInteger asyncCount = new AtomicInteger(0);
-
-                world.getAllEntities().forEach(entity -> {
-                    if (entity != null && entity.isAlive()) {
-                        EntityType<?> entityType = entity.getType();
-
-                        worldCount.incrementAndGet();
-                        totalEntities.incrementAndGet();
-                        entityTypeCounts.merge(entityType, 1, Integer::sum);
-
-                        if (!ParallelProcessor.shouldTickSynchronously(entity)) {
-                            asyncCount.incrementAndGet();
-                            totalAsyncEntities.incrementAndGet();
-                            asyncEntityTypeCounts.merge(entityType, 1, Integer::sum);
-                        }
-                    }
-                });
-
-                message.append(Component.literal("\n" + worldName + ": ").withStyle(style -> style.withColor(ChatFormatting.YELLOW)))
-                        .append(Component.literal(String.valueOf(worldCount.get())).withStyle(style -> style.withColor(ChatFormatting.GREEN)))
-                        .append(Component.literal(" entities (").withStyle(style -> style.withColor(ChatFormatting.GRAY)))
-                        .append(Component.literal(String.valueOf(asyncCount.get())).withStyle(style -> style.withColor(ChatFormatting.AQUA)))
-                        .append(Component.literal(" async)").withStyle(style -> style.withColor(ChatFormatting.GRAY)));
-            });
-
-            message.append(Component.literal("\nTotal Entities: ").withStyle(style -> style.withColor(ChatFormatting.WHITE)))
-                    .append(Component.literal(String.valueOf(totalEntities.get())).withStyle(style -> style.withColor(ChatFormatting.GOLD)))
-                    .append(Component.literal(" (").withStyle(style -> style.withColor(ChatFormatting.GRAY)))
-                    .append(Component.literal(String.valueOf(totalAsyncEntities.get())).withStyle(style -> style.withColor(ChatFormatting.AQUA)))
-                    .append(Component.literal(" async)").withStyle(style -> style.withColor(ChatFormatting.GRAY)));
-
-            if (topCount > 0) {
-                List<Map.Entry<EntityType<?>, Integer>> sortedEntities = new ArrayList<>(entityTypeCounts.entrySet());
-                sortedEntities.sort(Map.Entry.<EntityType<?>, Integer>comparingByValue().reversed());
-
-                if (topCount < sortedEntities.size()) {
-                    sortedEntities = sortedEntities.subList(0, topCount);
-                }
-
-                if (!sortedEntities.isEmpty()) {
-                    message.append(Component.literal("\n\nTop " + sortedEntities.size() + " Entity Types:").withStyle(style -> style.withColor(ChatFormatting.GOLD)));
-
-                    int rank = 1;
-                    for (Map.Entry<EntityType<?>, Integer> entry : sortedEntities) {
-                        EntityType<?> type = entry.getKey();
-                        int count = entry.getValue();
-                        int asyncCount = asyncEntityTypeCounts.getOrDefault(type, 0);
-
-                        ResourceLocation nameID = BuiltInRegistries.ENTITY_TYPE.getKey(type);
-                        String name = nameID.toLanguageKey();
-
-                        message.append(Component.literal("\n" + rank + ". ").withStyle(style -> style.withColor(ChatFormatting.GRAY)))
-                                .append(Component.literal(name).withStyle(style -> style.withColor(ChatFormatting.YELLOW)))
-                                .append(Component.literal(": ").withStyle(style -> style.withColor(ChatFormatting.GRAY)))
-                                .append(Component.literal(String.valueOf(count)).withStyle(style -> style.withColor(ChatFormatting.GREEN)))
-                                .append(Component.literal(" (").withStyle(style -> style.withColor(ChatFormatting.GRAY)))
-                                .append(Component.literal(String.valueOf(asyncCount)).withStyle(style -> style.withColor(ChatFormatting.AQUA)))
-                                .append(Component.literal(" async)").withStyle(style -> style.withColor(ChatFormatting.GRAY)));
-
-                        rank++;
-                    }
-                }
-            }
+            EntityStats stats = collectEntityStats(server);
+            MutableComponent message = buildEntityStatsMessage(stats, topCount);
             source.sendSuccess(() -> message, true);
         });
     }
+
+    private static EntityStats collectEntityStats(MinecraftServer server) {
+        EntityStats stats = new EntityStats();
+        server.getAllLevels().forEach(world -> {
+            String worldName = world.dimensionTypeRegistration().getRegisteredName();
+            AtomicInteger worldCount = new AtomicInteger(0);
+            AtomicInteger asyncCount = new AtomicInteger(0);
+
+            world.getAllEntities().forEach(entity -> {
+                if (entity != null && entity.isAlive()) {
+                    EntityType<?> entityType = entity.getType();
+                    worldCount.incrementAndGet();
+                    stats.totalEntities.incrementAndGet();
+                    stats.entityTypeCounts.merge(entityType, 1, Integer::sum);
+                    if (!ParallelProcessor.shouldTickSynchronously(entity)) {
+                        asyncCount.incrementAndGet();
+                        stats.totalAsyncEntities.incrementAndGet();
+                        stats.asyncEntityTypeCounts.merge(entityType, 1, Integer::sum);
+                    }
+                }
+            });
+
+            stats.worldStats.add(new WorldStats(worldName, worldCount.get(), asyncCount.get()));
+        });
+        return stats;
+    }
+
+    private static MutableComponent buildEntityStatsMessage(EntityStats stats, int topCount) {
+        MutableComponent message = prefix.copy()
+                .append(Component.literal("Entity Statistics ").withStyle(style -> style.withColor(ChatFormatting.GOLD)));
+
+        for (WorldStats worldStat : stats.worldStats) {
+            message.append(Component.literal("\n" + worldStat.name + ": ").withStyle(style -> style.withColor(ChatFormatting.YELLOW)))
+                    .append(Component.literal(String.valueOf(worldStat.count)).withStyle(style -> style.withColor(ChatFormatting.GREEN)))
+                    .append(Component.literal(" entities (").withStyle(style -> style.withColor(ChatFormatting.GRAY)))
+                    .append(Component.literal(String.valueOf(worldStat.asyncCount)).withStyle(style -> style.withColor(ChatFormatting.AQUA)))
+                    .append(Component.literal(" async)").withStyle(style -> style.withColor(ChatFormatting.GRAY)));
+        }
+
+        message.append(Component.literal("\nTotal Entities: ").withStyle(style -> style.withColor(ChatFormatting.WHITE)))
+                .append(Component.literal(String.valueOf(stats.totalEntities.get())).withStyle(style -> style.withColor(ChatFormatting.GOLD)))
+                .append(Component.literal(" (").withStyle(style -> style.withColor(ChatFormatting.GRAY)))
+                .append(Component.literal(String.valueOf(stats.totalAsyncEntities.get())).withStyle(style -> style.withColor(ChatFormatting.AQUA)))
+                .append(Component.literal(" async)").withStyle(style -> style.withColor(ChatFormatting.GRAY)));
+
+        if (topCount > 0) {
+            List<Map.Entry<EntityType<?>, Integer>> sortedEntities = new ArrayList<>(stats.entityTypeCounts.entrySet());
+            sortedEntities.sort(Map.Entry.<EntityType<?>, Integer>comparingByValue().reversed());
+
+            if (topCount < sortedEntities.size()) {
+                sortedEntities = sortedEntities.subList(0, topCount);
+            }
+
+            if (!sortedEntities.isEmpty()) {
+                message.append(Component.literal("\n\nTop " + sortedEntities.size() + " Entity Types:").withStyle(style -> style.withColor(ChatFormatting.GOLD)));
+                int rank = 1;
+                for (Map.Entry<EntityType<?>, Integer> entry : sortedEntities) {
+                    EntityType<?> type = entry.getKey();
+                    int count = entry.getValue();
+                    int asyncCount = stats.asyncEntityTypeCounts.getOrDefault(type, 0);
+                    ResourceLocation nameID = BuiltInRegistries.ENTITY_TYPE.getKey(type);
+                    String name = nameID.toLanguageKey();
+                    message.append(Component.literal("\n" + rank + ". ").withStyle(style -> style.withColor(ChatFormatting.GRAY)))
+                            .append(Component.literal(name).withStyle(style -> style.withColor(ChatFormatting.YELLOW)))
+                            .append(Component.literal(": ").withStyle(style -> style.withColor(ChatFormatting.GRAY)))
+                            .append(Component.literal(String.valueOf(count)).withStyle(style -> style.withColor(ChatFormatting.GREEN)))
+                            .append(Component.literal(" (").withStyle(style -> style.withColor(ChatFormatting.GRAY)))
+                            .append(Component.literal(String.valueOf(asyncCount)).withStyle(style -> style.withColor(ChatFormatting.AQUA)))
+                            .append(Component.literal(" async)").withStyle(style -> style.withColor(ChatFormatting.GRAY)));
+                    rank++;
+                }
+            }
+        }
+        return message;
+    }
+
+    private static class EntityStats {
+        Map<EntityType<?>, Integer> entityTypeCounts = new HashMap<>();
+        Map<EntityType<?>, Integer> asyncEntityTypeCounts = new HashMap<>();
+        AtomicInteger totalEntities = new AtomicInteger(0);
+        AtomicInteger totalAsyncEntities = new AtomicInteger(0);
+        List<WorldStats> worldStats = new ArrayList<>();
+    }
+
+    private record WorldStats(String name, int count, int asyncCount) {}
 
     private static double calculateAverageThreads() {
         if (threadSamples.isEmpty()) {
