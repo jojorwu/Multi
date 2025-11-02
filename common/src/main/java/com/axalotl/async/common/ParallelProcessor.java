@@ -105,23 +105,24 @@ public class ParallelProcessor {
     }
 
     public static boolean shouldTickSynchronously(Entity entity) {
-        if (entity.level().isClientSide()) {
+        if (entity.level().isClientSide() || isSyncTickRequired(entity)) {
             return true;
         }
+        return handlePortalSync(entity);
+    }
 
-        UUID entityId = entity.getUUID();
-        boolean requiresSyncTick = AsyncConfig.disabled ||
+    private static boolean isSyncTickRequired(Entity entity) {
+        return AsyncConfig.disabled ||
                 entity instanceof Projectile ||
                 entity instanceof AbstractMinecart ||
                 entity instanceof ServerPlayer ||
                 BLOCKED_ENTITIES.contains(entity.getClass()) ||
-                blacklistedEntity.contains(entityId) ||
+                blacklistedEntity.contains(entity.getUUID()) ||
                 AsyncConfig.synchronizedEntities.contains(EntityType.getKey(entity.getType()));
+    }
 
-        if (requiresSyncTick) {
-            return true;
-        }
-
+    private static boolean handlePortalSync(Entity entity) {
+        UUID entityId = entity.getUUID();
         if (portalTickSyncMap.containsKey(entityId)) {
             int ticksLeft = portalTickSyncMap.get(entityId);
             if (ticksLeft > 0) {
@@ -131,7 +132,6 @@ public class ParallelProcessor {
                 portalTickSyncMap.remove(entityId);
             }
         }
-
         if (isPortalTickRequired(entity)) {
             portalTickSyncMap.put(entityId, 39);
             return true;
