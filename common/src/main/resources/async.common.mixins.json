@@ -51,7 +51,6 @@
     "lithium.LithiumServerChunkCacheMixin",
     "lithium.LithiumServerLevel",
     "server.ChunkMapTrackedEntityMixin",
-    "server.MinecraftServerMixin",
     "server.PersistentEntitySectionManagerCallbackMixin",
     "server.PersistentEntitySectionManagerMixin",
     "server.ServerChunkCacheMixin",
