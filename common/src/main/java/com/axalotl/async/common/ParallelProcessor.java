@@ -212,29 +212,32 @@ public class ParallelProcessor {
     @SuppressWarnings("ResultOfMethodCallIgnored")
     public static void stop() {
         if (tickPool != null) {
-            LOGGER.info("Waiting for Async tickPool to shutdown...");
+            LOGGER.info("Shutting down Async tickPool...");
             tickPool.shutdown();
-            try {
-                tickPool.awaitTermination(60L, TimeUnit.SECONDS);
-            } catch (InterruptedException ignored) {
-            }
         }
         if (chunkIOPool != null) {
-            LOGGER.info("Waiting for Async chunkIOPool to shutdown...");
+            LOGGER.info("Shutting down Async chunkIOPool...");
             chunkIOPool.shutdown();
-            try {
-                chunkIOPool.awaitTermination(60L, TimeUnit.SECONDS);
-            } catch (InterruptedException ignored) {
-            }
         }
         if (chunkGenPool != null) {
-            LOGGER.info("Waiting for Async chunkGenPool to shutdown...");
+            LOGGER.info("Shutting down Async chunkGenPool...");
             chunkGenPool.shutdown();
-            try {
-                chunkGenPool.awaitTermination(60L, TimeUnit.SECONDS);
-            } catch (InterruptedException ignored) {
-            }
         }
+
+        try {
+            if (tickPool != null && !tickPool.awaitTermination(60L, TimeUnit.SECONDS)) {
+                LOGGER.warn("Async tickPool did not terminate in 60 seconds.");
+            }
+            if (chunkIOPool != null && !chunkIOPool.awaitTermination(60L, TimeUnit.SECONDS)) {
+                LOGGER.warn("Async chunkIOPool did not terminate in 60 seconds.");
+            }
+            if (chunkGenPool != null && !chunkGenPool.awaitTermination(60L, TimeUnit.SECONDS)) {
+                LOGGER.warn("Async chunkGenPool did not terminate in 60 seconds.");
+            }
+        } catch (InterruptedException ignored) {
+            LOGGER.error("Thread pool shutdown interrupted.");
+        }
+
         mcThreadTracker.clear();
     }
 
