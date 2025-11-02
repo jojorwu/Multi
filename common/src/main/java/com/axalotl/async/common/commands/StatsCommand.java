@@ -63,7 +63,13 @@ public class StatsCommand {
                 .executes(context -> {
                     ChunkSaveMetrics.printMetrics();
                     return 1;
-                })));
+                })
+                .then(literal("reset")
+                        .executes(context -> {
+                            ChunkSaveMetrics.reset();
+                            context.getSource().sendSuccess(() -> Component.literal("Chunk save metrics have been reset."), true);
+                            return 1;
+                        }))));
     }
 
     private static void showGeneralStats(CommandSourceStack source) {
