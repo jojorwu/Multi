@@ -52,19 +52,8 @@ public class ParallelProcessor {
     );
 
     public static void setupThreadPool(int parallelism, Class<?> asyncClass) {
-        ForkJoinPool.ForkJoinWorkerThreadFactory threadFactory = pool -> {
-            ForkJoinWorkerThread worker = ForkJoinPool.defaultForkJoinWorkerThreadFactory.newThread(pool);
-            worker.setName("Async-Tick-Pool-Thread-" + threadPoolID.getAndIncrement());
-            registerThread("Async-Tick", worker);
-            worker.setDaemon(true);
-            worker.setPriority(Thread.NORM_PRIORITY);
-            worker.setContextClassLoader(asyncClass.getClassLoader());
-            return worker;
-        };
-
-        tickPool = new ForkJoinPool(parallelism, threadFactory, (t, e) ->
-                LOGGER.error("Uncaught exception in thread {}: {}", t.getName(), e), true);
-        LOGGER.info("Initialized Pool with {} threads", parallelism);
+        tickPool = createNamedForkJoinPool("Tick", parallelism, Thread.NORM_PRIORITY, asyncClass);
+        LOGGER.info("Initialized Tick Pool with {} threads", parallelism);
     }
 
     public static void registerThread(String poolName, Thread thread) {
@@ -74,7 +63,8 @@ public class ParallelProcessor {
     }
 
     private static boolean isThreadInPool(Thread thread) {
-        return mcThreadTracker.getOrDefault("Async-Tick", Set.of()).stream()
+        return mcThreadTracker.values().stream()
+                .flatMap(Set::stream)
                 .map(WeakReference::get)
                 .anyMatch(thread::equals);
     }
@@ -210,34 +200,12 @@ public class ParallelProcessor {
     }
 
     public static void setupChunkIOPool(int paraMax, Class<?> asyncClass) {
-        ForkJoinPool.ForkJoinWorkerThreadFactory threadFactory = pool -> {
-            ForkJoinWorkerThread worker = ForkJoinPool.defaultForkJoinWorkerThreadFactory.newThread(pool);
-            worker.setName("Async-Chunk-IO-Pool-Thread-" + threadPoolID.getAndIncrement());
-            registerThread("Async-Chunk-IO", worker);
-            worker.setDaemon(true);
-            worker.setPriority(Thread.NORM_PRIORITY - 1);
-            worker.setContextClassLoader(asyncClass.getClassLoader());
-            return worker;
-        };
-
-        chunkIOPool = new ForkJoinPool(paraMax, threadFactory, (t, e) ->
-                LOGGER.error("Uncaught exception in thread {}: {}", t.getName(), e), true);
+        chunkIOPool = createNamedForkJoinPool("Chunk-IO", paraMax, Thread.NORM_PRIORITY - 1, asyncClass);
         LOGGER.info("Initialized Chunk IO Pool with {} threads", paraMax);
     }
 
     public static void setupChunkGenPool(int paraMax, Class<?> asyncClass) {
-        ForkJoinPool.ForkJoinWorkerThreadFactory threadFactory = pool -> {
-            ForkJoinWorkerThread worker = ForkJoinPool.defaultForkJoinWorkerThreadFactory.newThread(pool);
-            worker.setName("Async-Chunk-Gen-Pool-Thread-" + threadPoolID.getAndIncrement());
-            registerThread("Async-Chunk-Gen", worker);
-            worker.setDaemon(true);
-            worker.setPriority(Thread.NORM_PRIORITY - 1);
-            worker.setContextClassLoader(asyncClass.getClassLoader());
-            return worker;
-        };
-
-        chunkGenPool = new ForkJoinPool(paraMax, threadFactory, (t, e) ->
-                LOGGER.error("Uncaught exception in thread {}: {}", t.getName(), e), true);
+        chunkGenPool = createNamedForkJoinPool("Chunk-Gen", paraMax, Thread.NORM_PRIORITY - 1, asyncClass);
         LOGGER.info("Initialized Chunk Gen Pool with {} threads", paraMax);
     }
 
@@ -272,5 +240,19 @@ public class ParallelProcessor {
 
     private static void logEntityError(String message, Entity entity, Throwable e) {
         LOGGER.error("{} Entity Type: {}, UUID: {}", message, entity.getType().toString(), entity.getUUID(), e);
+    }
+
+    private static ForkJoinPool createNamedForkJoinPool(String poolName, int parallelism, int priority, Class<?> asyncClass) {
+        ForkJoinPool.ForkJoinWorkerThreadFactory threadFactory = pool -> {
+            ForkJoinWorkerThread worker = ForkJoinPool.defaultForkJoinWorkerThreadFactory.newThread(pool);
+            worker.setName("Async-" + poolName + "-Pool-Thread-" + threadPoolID.getAndIncrement());
+            registerThread("Async-" + poolName, worker);
+            worker.setDaemon(true);
+            worker.setPriority(priority);
+            worker.setContextClassLoader(asyncClass.getClassLoader());
+            return worker;
+        };
+        return new ForkJoinPool(parallelism, threadFactory, (t, e) ->
+                LOGGER.error("Uncaught exception in thread {}: {}", t.getName(), e), true);
     }
 }
