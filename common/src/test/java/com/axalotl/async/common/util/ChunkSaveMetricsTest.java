@@ -1,6 +1,8 @@
 package com.axalotl.async.common.util;
 
 import org.junit.jupiter.api.RepeatedTest;
+import org.mockito.Mockito;
+import org.apache.logging.log4j.Logger;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -10,12 +12,13 @@ class ChunkSaveMetricsTest {
 
     @RepeatedTest(10)
     void printMetrics_shouldNotThrowException_whenCalledConcurrentlyWithReset() {
+        Logger mockLogger = Mockito.mock(Logger.class);
         ExecutorService executor = Executors.newFixedThreadPool(2);
 
         Runnable printMetricsTask = () -> {
             ChunkSaveMetrics.chunksSaved.incrementAndGet();
             ChunkSaveMetrics.totalSaveTime.addAndGet(100);
-            ChunkSaveMetrics.printMetrics();
+            ChunkSaveMetrics.printMetrics(mockLogger);
         };
 
         Runnable resetTask = ChunkSaveMetrics::reset;
