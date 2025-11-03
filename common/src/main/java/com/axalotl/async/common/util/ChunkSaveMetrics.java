@@ -11,12 +11,15 @@ public class ChunkSaveMetrics {
     public static final AtomicInteger errors = new AtomicInteger(0);
 
     public static void printMetrics() {
+        final int saved = chunksSaved.get();
+        final long time = totalSaveTime.get();
+        final int err = errors.get();
         ParallelProcessor.LOGGER.info("--- Chunk Save Metrics ---");
-        ParallelProcessor.LOGGER.info("Chunks saved: " + chunksSaved.get());
-        if (chunksSaved.get() > 0) {
-            ParallelProcessor.LOGGER.info("Average save time: " + String.format("%.2f", (double) totalSaveTime.get() / chunksSaved.get()) + "ms");
+        ParallelProcessor.LOGGER.info("Chunks saved: " + saved);
+        if (saved > 0) {
+            ParallelProcessor.LOGGER.info("Average save time: " + String.format("%.2f", (double) time / saved) + "ms");
         }
-        ParallelProcessor.LOGGER.info("Errors: " + errors.get());
+        ParallelProcessor.LOGGER.info("Errors: " + err);
         ParallelProcessor.LOGGER.info("--------------------------");
     }
 
