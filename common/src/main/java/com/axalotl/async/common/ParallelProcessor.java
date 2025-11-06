@@ -63,15 +63,10 @@ public class ParallelProcessor {
     }
 
     private static boolean isThreadInPool(Thread thread) {
-        for (Set<WeakReference<Thread>> threadSet : mcThreadTracker.values()) {
-            for (WeakReference<Thread> threadRef : threadSet) {
-                Thread t = threadRef.get();
-                if (t != null && t.equals(thread)) {
-                    return true;
-                }
-            }
-        }
-        return false;
+        return mcThreadTracker.values().stream()
+                .flatMap(Set::stream)
+                .map(WeakReference::get)
+                .anyMatch(thread::equals);
     }
 
     public static boolean isServerExecutionThread() {
@@ -201,7 +196,11 @@ public class ParallelProcessor {
             return null;
         });
 
-        server.managedBlock(allTasks::isDone);
+        if (allTasks.isDone()) return;
+        server.managedBlock(() -> {
+            allTasks.join();
+            return true;
+        });
     }
 
     public static void setupChunkIOPool(int paraMax, Class<?> asyncClass) {
