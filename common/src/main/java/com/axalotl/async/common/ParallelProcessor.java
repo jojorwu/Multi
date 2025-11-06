@@ -44,7 +44,6 @@ public class ParallelProcessor {
     private static final BlockingQueue<CompletableFuture<?>> taskQueue = new LinkedBlockingQueue<>();
     private static final Set<UUID> blacklistedEntity = ConcurrentHashMap.newKeySet();
     private static final Map<UUID, Integer> portalTickSyncMap = new ConcurrentHashMap<>();
-    private static final Map<String, ExecutorService> managedPools = new ConcurrentHashMap<>();
     private static final Map<String, Set<WeakReference<Thread>>> mcThreadTracker = new ConcurrentHashMap<>();
     public static final Set<Class<?>> BLOCKED_ENTITIES = Set.of(
             FallingBlockEntity.class,
@@ -53,14 +52,8 @@ public class ParallelProcessor {
     );
 
     public static void setupThreadPool(int parallelism, Class<?> asyncClass) {
-        tickPool = createThreadPool("Tick", parallelism, Thread.NORM_PRIORITY, asyncClass);
-    }
-
-    private static ForkJoinPool createThreadPool(String name, int parallelism, int priority, Class<?> asyncClass) {
-        ForkJoinPool pool = createNamedForkJoinPool(name, parallelism, priority, asyncClass);
-        managedPools.put(name, pool);
-        LOGGER.info("Initialized {} Pool with {} threads", name, parallelism);
-        return pool;
+        tickPool = createNamedForkJoinPool("Tick", parallelism, Thread.NORM_PRIORITY, asyncClass);
+        LOGGER.info("Initialized Tick Pool with {} threads", parallelism);
     }
 
     public static void registerThread(String poolName, Thread thread) {
@@ -70,10 +63,15 @@ public class ParallelProcessor {
     }
 
     private static boolean isThreadInPool(Thread thread) {
-        return mcThreadTracker.values().stream()
-                .flatMap(Set::stream)
-                .map(WeakReference::get)
-                .anyMatch(thread::equals);
+        for (Set<WeakReference<Thread>> threadSet : mcThreadTracker.values()) {
+            for (WeakReference<Thread> threadRef : threadSet) {
+                Thread t = threadRef.get();
+                if (t != null && t.equals(thread)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public static boolean isServerExecutionThread() {
@@ -113,18 +111,9 @@ public class ParallelProcessor {
                 entity instanceof Projectile ||
                 entity instanceof AbstractMinecart ||
                 entity instanceof ServerPlayer ||
-                isEntityBlocked(entity) ||
+                BLOCKED_ENTITIES.contains(entity.getClass()) ||
                 blacklistedEntity.contains(entity.getUUID()) ||
                 AsyncConfig.synchronizedEntities.contains(EntityType.getKey(entity.getType()));
-    }
-
-    private static boolean isEntityBlocked(Entity entity) {
-        for (Class<?> blockedClass : BLOCKED_ENTITIES) {
-            if (blockedClass.isAssignableFrom(entity.getClass())) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private static boolean handlePortalSync(Entity entity) {
@@ -212,38 +201,48 @@ public class ParallelProcessor {
             return null;
         });
 
-        if (allTasks.isDone()) return;
-        server.managedBlock(() -> {
-            allTasks.join();
-            return true;
-        });
+        server.managedBlock(allTasks::isDone);
     }
 
     public static void setupChunkIOPool(int paraMax, Class<?> asyncClass) {
-        chunkIOPool = createThreadPool("Chunk-IO", paraMax, Thread.NORM_PRIORITY - 1, asyncClass);
+        chunkIOPool = createNamedForkJoinPool("Chunk-IO", paraMax, Thread.NORM_PRIORITY - 1, asyncClass);
+        LOGGER.info("Initialized Chunk IO Pool with {} threads", paraMax);
     }
 
     public static void setupChunkGenPool(int paraMax, Class<?> asyncClass) {
-        chunkGenPool = createThreadPool("Chunk-Gen", paraMax, Thread.NORM_PRIORITY - 1, asyncClass);
+        chunkGenPool = createNamedForkJoinPool("Chunk-Gen", paraMax, Thread.NORM_PRIORITY - 1, asyncClass);
+        LOGGER.info("Initialized Chunk Gen Pool with {} threads", paraMax);
     }
 
+    @SuppressWarnings("ResultOfMethodCallIgnored")
     public static void stop() {
-        managedPools.forEach((name, pool) -> {
-            LOGGER.info("Shutting down Async {} Pool...", name);
-            pool.shutdown();
-        });
+        if (tickPool != null) {
+            LOGGER.info("Shutting down Async tickPool...");
+            tickPool.shutdown();
+        }
+        if (chunkIOPool != null) {
+            LOGGER.info("Shutting down Async chunkIOPool...");
+            chunkIOPool.shutdown();
+        }
+        if (chunkGenPool != null) {
+            LOGGER.info("Shutting down Async chunkGenPool...");
+            chunkGenPool.shutdown();
+        }
 
-        managedPools.forEach((name, pool) -> {
-            try {
-                if (!pool.awaitTermination(60L, TimeUnit.SECONDS)) {
-                    LOGGER.warn("Async {} Pool did not terminate in 60 seconds.", name);
-                }
-            } catch (InterruptedException ignored) {
-                LOGGER.error("Thread pool shutdown interrupted for {} Pool.", name);
+        try {
+            if (tickPool != null && !tickPool.awaitTermination(60L, TimeUnit.SECONDS)) {
+                LOGGER.warn("Async tickPool did not terminate in 60 seconds.");
             }
-        });
+            if (chunkIOPool != null && !chunkIOPool.awaitTermination(60L, TimeUnit.SECONDS)) {
+                LOGGER.warn("Async chunkIOPool did not terminate in 60 seconds.");
+            }
+            if (chunkGenPool != null && !chunkGenPool.awaitTermination(60L, TimeUnit.SECONDS)) {
+                LOGGER.warn("Async chunkGenPool did not terminate in 60 seconds.");
+            }
+        } catch (InterruptedException ignored) {
+            LOGGER.error("Thread pool shutdown interrupted.");
+        }
 
-        managedPools.clear();
         mcThreadTracker.clear();
     }
 
