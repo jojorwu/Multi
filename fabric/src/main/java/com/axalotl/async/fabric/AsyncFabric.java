@@ -26,9 +26,8 @@ public class AsyncFabric implements ModInitializer {
         ServerLifecycleEvents.SERVER_STARTING.register(server -> {
             LOGGER.info("Async Setting up thread-pool...");
             ParallelProcessor.setServer(server);
-            ParallelProcessor.setupThreadPool(AsyncConfig.getParallelism(), this.getClass());
+            ParallelProcessor.setupWorkPool(AsyncConfig.getParallelism(), this.getClass());
             ParallelProcessor.setupChunkIOPool(AsyncConfig.getChunkIOParaMax(), this.getClass());
-            ParallelProcessor.setupChunkGenPool(AsyncConfig.getChunkGenParaMax(), this.getClass());
         });
 
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> StatsCommand.register(dispatcher));

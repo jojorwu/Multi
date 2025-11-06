@@ -25,7 +25,7 @@ public abstract class ChunkMapRandomTickMixin {
             original.call(instance, chunk, randomTickSpeed);
             return;
         }
-        CompletableFuture.runAsync(() -> original.call(instance, chunk, randomTickSpeed), ParallelProcessor.tickPool)
+        CompletableFuture.runAsync(() -> original.call(instance, chunk, randomTickSpeed), ParallelProcessor.workPool)
                 .exceptionally(e -> {
                     ParallelProcessor.LOGGER.error("Error during async random tick for chunk " + chunk.getPos(), e);
                     return null;

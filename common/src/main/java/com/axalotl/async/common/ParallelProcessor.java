@@ -38,9 +38,8 @@ public class ParallelProcessor {
 
     public static final AtomicInteger currentEntities = new AtomicInteger();
     private static final AtomicInteger threadPoolID = new AtomicInteger();
-    public static ExecutorService tickPool;
+    public static ExecutorService workPool;
     public static ExecutorService chunkIOPool;
-    public static ExecutorService chunkGenPool;
     private static final BlockingQueue<CompletableFuture<?>> taskQueue = new LinkedBlockingQueue<>();
     private static final Set<UUID> blacklistedEntity = ConcurrentHashMap.newKeySet();
     private static final Map<UUID, Integer> portalTickSyncMap = new ConcurrentHashMap<>();
@@ -51,9 +50,9 @@ public class ParallelProcessor {
             Boat.class
     );
 
-    public static void setupThreadPool(int parallelism, Class<?> asyncClass) {
-        tickPool = createNamedForkJoinPool("Tick", parallelism, Thread.NORM_PRIORITY, asyncClass);
-        LOGGER.info("Initialized Tick Pool with {} threads", parallelism);
+    public static void setupWorkPool(int parallelism, Class<?> asyncClass) {
+        workPool = createNamedForkJoinPool("Work", parallelism, Thread.NORM_PRIORITY, asyncClass);
+        LOGGER.info("Initialized Work Pool with {} threads", parallelism);
     }
 
     public static void registerThread(String poolName, Thread thread) {
@@ -77,9 +76,9 @@ public class ParallelProcessor {
         if (shouldTickSynchronously(entity)) {
             tickSynchronously(world, entity);
         } else {
-            if (!tickPool.isShutdown() && !tickPool.isTerminated()) {
+            if (!workPool.isShutdown() && !workPool.isTerminated()) {
                 CompletableFuture<Void> future = CompletableFuture.runAsync(() ->
-                        performAsyncEntityTick(world, entity), tickPool
+                        performAsyncEntityTick(world, entity), workPool
                 ).exceptionally(e -> {
                     logEntityError("Error in async tick, switching to synchronous", entity, e);
                     tickSynchronously(world, entity);
@@ -152,7 +151,7 @@ public class ParallelProcessor {
 
     public static void asyncSpawnForChunk(ServerLevel level, LevelChunk chunk, NaturalSpawner.SpawnState spawnState, List<MobCategory> categories) {
         if (!AsyncConfig.disabled && AsyncConfig.enableAsyncSpawn) {
-            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> NaturalSpawner.spawnForChunk(level, chunk, spawnState, categories), ParallelProcessor.tickPool).exceptionally(e -> {
+            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> NaturalSpawner.spawnForChunk(level, chunk, spawnState, categories), ParallelProcessor.workPool).exceptionally(e -> {
                 ParallelProcessor.LOGGER.error("Error in async spawn, switching to synchronous", e);
                 NaturalSpawner.spawnForChunk(level, chunk, spawnState, categories);
                 return null;
@@ -165,7 +164,7 @@ public class ParallelProcessor {
 
     public static void asyncDespawn(Entity entity) {
         if (!AsyncConfig.disabled && AsyncConfig.enableAsyncSpawn) {
-            CompletableFuture<Void> future = CompletableFuture.runAsync(entity::checkDespawn, tickPool
+            CompletableFuture<Void> future = CompletableFuture.runAsync(entity::checkDespawn, workPool
             ).exceptionally(e -> {
                 LOGGER.error("Error in async spawn tick, switching to synchronous", e);
                 entity.checkDespawn();
@@ -196,11 +195,7 @@ public class ParallelProcessor {
             return null;
         });
 
-        if (allTasks.isDone()) return;
-        server.managedBlock(() -> {
-            allTasks.join();
-            return true;
-        });
+        server.managedBlock(allTasks::isDone);
     }
 
     public static void setupChunkIOPool(int paraMax, Class<?> asyncClass) {
@@ -208,35 +203,23 @@ public class ParallelProcessor {
         LOGGER.info("Initialized Chunk IO Pool with {} threads", paraMax);
     }
 
-    public static void setupChunkGenPool(int paraMax, Class<?> asyncClass) {
-        chunkGenPool = createNamedForkJoinPool("Chunk-Gen", paraMax, Thread.NORM_PRIORITY - 1, asyncClass);
-        LOGGER.info("Initialized Chunk Gen Pool with {} threads", paraMax);
-    }
-
     @SuppressWarnings("ResultOfMethodCallIgnored")
     public static void stop() {
-        if (tickPool != null) {
-            LOGGER.info("Shutting down Async tickPool...");
-            tickPool.shutdown();
+        if (workPool != null) {
+            LOGGER.info("Shutting down Async workPool...");
+            workPool.shutdown();
         }
         if (chunkIOPool != null) {
             LOGGER.info("Shutting down Async chunkIOPool...");
             chunkIOPool.shutdown();
         }
-        if (chunkGenPool != null) {
-            LOGGER.info("Shutting down Async chunkGenPool...");
-            chunkGenPool.shutdown();
-        }
 
         try {
-            if (tickPool != null && !tickPool.awaitTermination(60L, TimeUnit.SECONDS)) {
-                LOGGER.warn("Async tickPool did not terminate in 60 seconds.");
+            if (workPool != null && !workPool.awaitTermination(60L, TimeUnit.SECONDS)) {
+                LOGGER.warn("Async workPool did not terminate in 60 seconds.");
             }
             if (chunkIOPool != null && !chunkIOPool.awaitTermination(60L, TimeUnit.SECONDS)) {
                 LOGGER.warn("Async chunkIOPool did not terminate in 60 seconds.");
-            }
-            if (chunkGenPool != null && !chunkGenPool.awaitTermination(60L, TimeUnit.SECONDS)) {
-                LOGGER.warn("Async chunkGenPool did not terminate in 60 seconds.");
             }
         } catch (InterruptedException ignored) {
             LOGGER.error("Thread pool shutdown interrupted.");
