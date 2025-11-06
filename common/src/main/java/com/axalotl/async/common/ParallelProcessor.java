@@ -44,6 +44,7 @@ public class ParallelProcessor {
     private static final BlockingQueue<CompletableFuture<?>> taskQueue = new LinkedBlockingQueue<>();
     private static final Set<UUID> blacklistedEntity = ConcurrentHashMap.newKeySet();
     private static final Map<UUID, Integer> portalTickSyncMap = new ConcurrentHashMap<>();
+    private static final Map<String, ExecutorService> managedPools = new ConcurrentHashMap<>();
     private static final Map<String, Set<WeakReference<Thread>>> mcThreadTracker = new ConcurrentHashMap<>();
     public static final Set<Class<?>> BLOCKED_ENTITIES = Set.of(
             FallingBlockEntity.class,
@@ -52,8 +53,14 @@ public class ParallelProcessor {
     );
 
     public static void setupThreadPool(int parallelism, Class<?> asyncClass) {
-        tickPool = createNamedForkJoinPool("Tick", parallelism, Thread.NORM_PRIORITY, asyncClass);
-        LOGGER.info("Initialized Tick Pool with {} threads", parallelism);
+        tickPool = createThreadPool("Tick", parallelism, Thread.NORM_PRIORITY, asyncClass);
+    }
+
+    private static ForkJoinPool createThreadPool(String name, int parallelism, int priority, Class<?> asyncClass) {
+        ForkJoinPool pool = createNamedForkJoinPool(name, parallelism, priority, asyncClass);
+        managedPools.put(name, pool);
+        LOGGER.info("Initialized {} Pool with {} threads", name, parallelism);
+        return pool;
     }
 
     public static void registerThread(String poolName, Thread thread) {
@@ -204,42 +211,30 @@ public class ParallelProcessor {
     }
 
     public static void setupChunkIOPool(int paraMax, Class<?> asyncClass) {
-        chunkIOPool = createNamedForkJoinPool("Chunk-IO", paraMax, Thread.NORM_PRIORITY - 1, asyncClass);
-        LOGGER.info("Initialized Chunk IO Pool with {} threads", paraMax);
+        chunkIOPool = createThreadPool("Chunk-IO", paraMax, Thread.NORM_PRIORITY - 1, asyncClass);
     }
 
     public static void setupChunkGenPool(int paraMax, Class<?> asyncClass) {
-        chunkGenPool = createNamedForkJoinPool("Chunk-Gen", paraMax, Thread.NORM_PRIORITY - 1, asyncClass);
-        LOGGER.info("Initialized Chunk Gen Pool with {} threads", paraMax);
+        chunkGenPool = createThreadPool("Chunk-Gen", paraMax, Thread.NORM_PRIORITY - 1, asyncClass);
     }
 
     public static void stop() {
-        List<ExecutorService> pools = new ArrayList<>();
-        if (tickPool != null) {
-            pools.add(tickPool);
-            LOGGER.info("Shutting down Async tickPool...");
-            tickPool.shutdown();
-        }
-        if (chunkIOPool != null) {
-            pools.add(chunkIOPool);
-            LOGGER.info("Shutting down Async chunkIOPool...");
-            chunkIOPool.shutdown();
-        }
-        if (chunkGenPool != null) {
-            pools.add(chunkGenPool);
-            LOGGER.info("Shutting down Async chunkGenPool...");
-            chunkGenPool.shutdown();
-        }
+        managedPools.forEach((name, pool) -> {
+            LOGGER.info("Shutting down Async {} Pool...", name);
+            pool.shutdown();
+        });
 
-        for (ExecutorService pool : pools) {
+        managedPools.forEach((name, pool) -> {
             try {
                 if (!pool.awaitTermination(60L, TimeUnit.SECONDS)) {
-                    LOGGER.warn("Async pool did not terminate in 60 seconds.");
+                    LOGGER.warn("Async {} Pool did not terminate in 60 seconds.", name);
                 }
             } catch (InterruptedException ignored) {
-                LOGGER.error("Thread pool shutdown interrupted.");
+                LOGGER.error("Thread pool shutdown interrupted for {} Pool.", name);
             }
-        }
+        });
+
+        managedPools.clear();
         mcThreadTracker.clear();
     }
 
