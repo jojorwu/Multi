@@ -20,7 +20,7 @@ public class ChunkMapGenerationMixin {
         if (AsyncConfig.disabled) {
             return holder.scheduleChunkGenerationTask(status, map);
         }
-        return CompletableFuture.supplyAsync(() -> holder.scheduleChunkGenerationTask(status, map), ParallelProcessor.workPool)
+        return CompletableFuture.supplyAsync(() -> holder.scheduleChunkGenerationTask(status, map), ParallelProcessor.chunkGenPool)
                 .thenCompose(future -> future)
                 .exceptionally(e -> {
                     ParallelProcessor.LOGGER.error("Error during async chunk generation for chunk " + holder.getPos(), e);
