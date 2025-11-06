@@ -196,7 +196,11 @@ public class ParallelProcessor {
             return null;
         });
 
-        server.managedBlock(allTasks::isDone);
+        if (allTasks.isDone()) return;
+        server.managedBlock(() -> {
+            allTasks.join();
+            return true;
+        });
     }
 
     public static void setupChunkIOPool(int paraMax, Class<?> asyncClass) {
@@ -209,35 +213,33 @@ public class ParallelProcessor {
         LOGGER.info("Initialized Chunk Gen Pool with {} threads", paraMax);
     }
 
-    @SuppressWarnings("ResultOfMethodCallIgnored")
     public static void stop() {
+        List<ExecutorService> pools = new ArrayList<>();
         if (tickPool != null) {
+            pools.add(tickPool);
             LOGGER.info("Shutting down Async tickPool...");
             tickPool.shutdown();
         }
         if (chunkIOPool != null) {
+            pools.add(chunkIOPool);
             LOGGER.info("Shutting down Async chunkIOPool...");
             chunkIOPool.shutdown();
         }
         if (chunkGenPool != null) {
+            pools.add(chunkGenPool);
             LOGGER.info("Shutting down Async chunkGenPool...");
             chunkGenPool.shutdown();
         }
 
-        try {
-            if (tickPool != null && !tickPool.awaitTermination(60L, TimeUnit.SECONDS)) {
-                LOGGER.warn("Async tickPool did not terminate in 60 seconds.");
+        for (ExecutorService pool : pools) {
+            try {
+                if (!pool.awaitTermination(60L, TimeUnit.SECONDS)) {
+                    LOGGER.warn("Async pool did not terminate in 60 seconds.");
+                }
+            } catch (InterruptedException ignored) {
+                LOGGER.error("Thread pool shutdown interrupted.");
             }
-            if (chunkIOPool != null && !chunkIOPool.awaitTermination(60L, TimeUnit.SECONDS)) {
-                LOGGER.warn("Async chunkIOPool did not terminate in 60 seconds.");
-            }
-            if (chunkGenPool != null && !chunkGenPool.awaitTermination(60L, TimeUnit.SECONDS)) {
-                LOGGER.warn("Async chunkGenPool did not terminate in 60 seconds.");
-            }
-        } catch (InterruptedException ignored) {
-            LOGGER.error("Thread pool shutdown interrupted.");
         }
-
         mcThreadTracker.clear();
     }
 
