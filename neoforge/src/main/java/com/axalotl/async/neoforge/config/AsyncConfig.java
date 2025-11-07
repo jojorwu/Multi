@@ -55,7 +55,6 @@ public class AsyncConfig {
         com.axalotl.async.common.config.AsyncConfig.chunkGenParaMax = chunkGenParaMax.get();
         com.axalotl.async.common.config.AsyncConfig.enableAsyncSpawn = enableAsyncSpawn.get();
         com.axalotl.async.common.config.AsyncConfig.enableAsyncRandomTicks = enableAsyncRandomTicks.get();
-        com.axalotl.async.common.config.AsyncConfig.synchronizedEntities = new HashSet<>();
         List<String> ids = synchronizedEntities.get();
         HashSet<ResourceLocation> set = new HashSet<>();
 
