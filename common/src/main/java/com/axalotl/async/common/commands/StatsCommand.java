@@ -181,11 +181,12 @@ public class StatsCommand {
     private record WorldStats(String name, int count, int asyncCount) {}
 
     private static double calculateAverageThreads() {
-        if (threadSamples.isEmpty()) {
+        int size = threadSamples.size();
+        if (size == 0) {
             return 0.0;
         }
         double sum = threadSamples.stream().mapToDouble(Integer::doubleValue).sum();
-        return sum / threadSamples.size();
+        return sum / size;
     }
 
     public static void runStatsThread() {
