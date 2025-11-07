@@ -46,6 +46,7 @@ dependencies {
     testImplementation 'com.mojang:brigadier:1.0.18'
     testImplementation 'it.unimi.dsi:fastutil:8.5.4'
     testImplementation 'org.apache.logging.log4j:log4j-api:2.17.1'
+    testImplementation "net.neoforged:neoforge:${neoforge_version}"
 }
 
 configurations {

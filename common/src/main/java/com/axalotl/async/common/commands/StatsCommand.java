@@ -181,11 +181,14 @@ public class StatsCommand {
     private record WorldStats(String name, int count, int asyncCount) {}
 
     private static double calculateAverageThreads() {
-        int size = threadSamples.size();
+        // Create a snapshot of the queue to prevent race conditions
+        // where the queue is modified between the size check and the sum calculation.
+        final var snapshot = new java.util.ArrayList<>(threadSamples);
+        final int size = snapshot.size();
         if (size == 0) {
             return 0.0;
         }
-        double sum = threadSamples.stream().mapToDouble(Integer::doubleValue).sum();
+        final double sum = snapshot.stream().mapToDouble(Integer::doubleValue).sum();
         return sum / size;
     }
 
