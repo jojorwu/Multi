@@ -203,7 +203,10 @@ public class ParallelProcessor {
             return null;
         });
 
-        server.managedBlock(allTasks::isDone);
+        server.managedBlock(() -> {
+            allTasks.join();
+            return true;
+        });
     }
 
     public static void setupChunkIOPool(int paraMax, Class<?> asyncClass) {
