@@ -113,7 +113,7 @@ public class ParallelProcessor {
                 entity instanceof Projectile ||
                 entity instanceof AbstractMinecart ||
                 entity instanceof ServerPlayer ||
-                BLOCKED_ENTITIES.contains(entity.getClass()) ||
+                BLOCKED_ENTITIES.stream().anyMatch(c -> c.isAssignableFrom(entity.getClass())) ||
                 blacklistedEntity.contains(entity.getUUID()) ||
                 AsyncConfig.synchronizedEntities.contains(EntityType.getKey(entity.getType()));
     }
