@@ -111,9 +111,18 @@ public class ParallelProcessor {
                 entity instanceof Projectile ||
                 entity instanceof AbstractMinecart ||
                 entity instanceof ServerPlayer ||
-                BLOCKED_ENTITIES.contains(entity.getClass()) ||
+                isEntityBlocked(entity) ||
                 blacklistedEntity.contains(entity.getUUID()) ||
                 AsyncConfig.synchronizedEntities.contains(EntityType.getKey(entity.getType()));
+    }
+
+    private static boolean isEntityBlocked(Entity entity) {
+        for (Class<?> blockedClass : BLOCKED_ENTITIES) {
+            if (blockedClass.isAssignableFrom(entity.getClass())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean handlePortalSync(Entity entity) {
