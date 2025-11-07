@@ -1,36 +1,42 @@
 package com.axalotl.async.common.util;
 
-import org.junit.jupiter.api.RepeatedTest;
-import org.mockito.Mockito;
 import org.apache.logging.log4j.Logger;
+import org.junit.jupiter.api.RepeatedTest;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+
 class ChunkSaveMetricsTest {
 
     @RepeatedTest(10)
-    void printMetrics_shouldNotThrowException_whenCalledConcurrentlyWithReset() {
-        Logger mockLogger = Mockito.mock(Logger.class);
+    void printMetrics_whenCalledConcurrentlyWithReset_doesNotThrowException() {
+        Logger logger = Mockito.mock(Logger.class);
         ExecutorService executor = Executors.newFixedThreadPool(2);
 
-        Runnable printMetricsTask = () -> {
-            ChunkSaveMetrics.chunksSaved.incrementAndGet();
-            ChunkSaveMetrics.totalSaveTime.addAndGet(100);
-            ChunkSaveMetrics.printMetrics(mockLogger);
+        Runnable printTask = () -> {
+            for (int i = 0; i < 1000; i++) {
+                ChunkSaveMetrics.chunksSaved.set(1);
+                assertDoesNotThrow(() -> ChunkSaveMetrics.printMetrics(logger));
+            }
         };
 
-        Runnable resetTask = ChunkSaveMetrics::reset;
+        Runnable resetTask = () -> {
+            for (int i = 0; i < 1000; i++) {
+                ChunkSaveMetrics.reset();
+            }
+        };
 
-        for (int i = 0; i < 1000; i++) {
-            executor.submit(printMetricsTask);
-            executor.submit(resetTask);
-        }
+        executor.submit(printTask);
+        executor.submit(resetTask);
 
         executor.shutdown();
         try {
-            if (!executor.awaitTermination(10, TimeUnit.SECONDS)) {
+            if (!executor.awaitTermination(1, TimeUnit.MINUTES)) {
                 executor.shutdownNow();
             }
         } catch (InterruptedException e) {

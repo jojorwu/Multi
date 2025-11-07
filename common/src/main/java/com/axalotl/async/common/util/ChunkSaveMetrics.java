@@ -14,6 +14,7 @@ public class ChunkSaveMetrics {
         final int saved = chunksSaved.get();
         final long time = totalSaveTime.get();
         final int err = errors.get();
+
         logger.info("--- Chunk Save Metrics ---");
         logger.info("Chunks saved: " + saved);
         if (saved > 0) {
