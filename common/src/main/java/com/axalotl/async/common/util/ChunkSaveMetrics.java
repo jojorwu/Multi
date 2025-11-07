@@ -18,7 +18,7 @@ public class ChunkSaveMetrics {
         logger.info("--- Chunk Save Metrics ---");
         logger.info("Chunks saved: " + saved);
         if (saved > 0) {
-            logger.info("Average save time: " + String.format("%.2f", (double) time / saved) + "ms");
+            logger.info("Average save time: " + String.format("%.2f", (double) time / saved / 1_000_000) + "ms");
         }
         logger.info("Errors: " + err);
         logger.info("--------------------------");
