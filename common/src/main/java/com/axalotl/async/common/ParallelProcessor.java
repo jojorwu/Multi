@@ -239,7 +239,8 @@ public class ParallelProcessor {
     }
 
     private static void logEntityError(String message, Entity entity, Throwable e) {
-        LOGGER.error("{} Entity Type: {}, UUID: {}", message, entity.getType().toString(), entity.getUUID(), e);
+        String entityType = entity.getType() != null ? entity.getType().toString() : "null";
+        LOGGER.error("{} Entity Type: {}, UUID: {}", message, entityType, entity.getUUID(), e);
     }
 
     private static ForkJoinPool createNamedForkJoinPool(String poolName, int parallelism, int priority, Class<?> asyncClass) {
