@@ -73,6 +73,7 @@ public class ParallelProcessor {
         return mcThreadTracker.values().stream()
                 .flatMap(Set::stream)
                 .map(WeakReference::get)
+                .filter(java.util.Objects::nonNull)
                 .anyMatch(thread::equals);
     }
 
