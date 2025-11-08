@@ -56,6 +56,10 @@ public class AsyncConfig {
         com.axalotl.async.common.config.AsyncConfig.enableAsyncSpawn = enableAsyncSpawn.get();
         com.axalotl.async.common.config.AsyncConfig.enableAsyncRandomTicks = enableAsyncRandomTicks.get();
         List<String> ids = synchronizedEntities.get();
+        if (ids.isEmpty()) {
+            com.axalotl.async.common.config.AsyncConfig.synchronizedEntities = new HashSet<>(com.axalotl.async.common.config.AsyncConfig.getDefaultSynchronizedEntities());
+            return;
+        }
         HashSet<ResourceLocation> set = new HashSet<>();
 
         for (String id : ids) {
