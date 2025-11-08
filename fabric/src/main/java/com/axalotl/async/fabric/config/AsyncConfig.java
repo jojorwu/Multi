@@ -87,6 +87,10 @@ public class AsyncConfig {
         enableAsyncRandomTicks = CONFIG.getOrElse("enableAsyncRandomTicks", enableAsyncRandomTicks);
 
         List<String> ids = CONFIG.getOrElse("synchronizedEntities", synchronizedEntities.stream().map(ResourceLocation::toString).toList());
+        if (ids.isEmpty()) {
+            com.axalotl.async.common.config.AsyncConfig.synchronizedEntities = getDefaultSynchronizedEntities();
+            return;
+        }
         HashSet<ResourceLocation> set = new HashSet<>();
 
         for (String id : ids) {
