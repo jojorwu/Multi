@@ -84,11 +84,13 @@ public abstract class LithiumServerChunkCacheMixin extends ChunkSource {
         } else {
             long key = async$createCacheKey(x, z, status);
 
-            for (int i = 0; i < 4; ++i) {
-                if (key == this.async$cacheKeys[i]) {
-                    ChunkAccess chunk = this.async$cacheChunks[i];
-                    if (chunk != null || !create) {
-                        return chunk;
+            synchronized (this.async$cacheLock) {
+                for (int i = 0; i < 4; ++i) {
+                    if (key == this.async$cacheKeys[i]) {
+                        ChunkAccess chunk = this.async$cacheChunks[i];
+                        if (chunk != null || !create) {
+                            return chunk;
+                        }
                     }
                 }
             }

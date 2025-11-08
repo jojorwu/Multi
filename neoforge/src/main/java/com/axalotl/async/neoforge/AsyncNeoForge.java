@@ -40,12 +40,14 @@ public class AsyncNeoForge {
         StatsCommand.runStatsThread();
         ParallelProcessor.setServer(event.getServer());
         ParallelProcessor.setupThreadPool(getParallelism(), this.getClass());
+        ParallelProcessor.setupChunkIOPool(com.axalotl.async.common.config.AsyncConfig.getChunkIOParaMax(), this.getClass());
+        ParallelProcessor.setupChunkGenPool(com.axalotl.async.common.config.AsyncConfig.getChunkGenParaMax(), this.getClass());
     }
 
     @SubscribeEvent
     public void registerCommandsEvent(RegisterCommandsEvent event) {
         CommandDispatcher<CommandSourceStack> dispatcher = event.getDispatcher();
-        AsyncCommand.register(dispatcher);
+        StatsCommand.register(dispatcher);
     }
 
     @SubscribeEvent

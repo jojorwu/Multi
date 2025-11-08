@@ -18,7 +18,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 public abstract class LevelMixin implements LevelAccessor, AutoCloseable {
 
     @Unique
-    private static final Object async$lock = new Object();
+    private final Object async$lock = new Object();
 
     @Shadow
     @Final

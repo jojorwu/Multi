@@ -39,9 +39,9 @@ public abstract class EntityLookupMixin<T extends EntityAccess> {
         byUuid = ConcurrentCollections.newHashMap();
     }
 
-    //TODO fix duplicate entity UUID
-    @Redirect(method = "add", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;warn(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V", remap = false))
-    private void duplicateEntityUUIDDisable(Logger instance, String s, Object uuid, Object entity) {
+    @WrapMethod(method = "add")
+    private synchronized void add(T entity, Operation<Void> original) {
+        original.call(entity);
     }
 
     @WrapMethod(method = "getEntity(Ljava/util/UUID;)Lnet/minecraft/world/level/entity/EntityAccess;")

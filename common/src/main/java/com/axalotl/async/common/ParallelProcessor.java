@@ -39,9 +39,12 @@ public class ParallelProcessor {
     public static final AtomicInteger currentEntities = new AtomicInteger();
     private static final AtomicInteger threadPoolID = new AtomicInteger();
     public static ExecutorService tickPool;
+    public static ExecutorService chunkIOPool;
+    public static ExecutorService chunkGenPool;
     private static final BlockingQueue<CompletableFuture<?>> taskQueue = new LinkedBlockingQueue<>();
     private static final Set<UUID> blacklistedEntity = ConcurrentHashMap.newKeySet();
     private static final Map<UUID, Integer> portalTickSyncMap = new ConcurrentHashMap<>();
+    private static final Map<String, ExecutorService> managedPools = new ConcurrentHashMap<>();
     private static final Map<String, Set<WeakReference<Thread>>> mcThreadTracker = new ConcurrentHashMap<>();
     public static final Set<Class<?>> BLOCKED_ENTITIES = Set.of(
             FallingBlockEntity.class,
@@ -50,19 +53,14 @@ public class ParallelProcessor {
     );
 
     public static void setupThreadPool(int parallelism, Class<?> asyncClass) {
-        ForkJoinPool.ForkJoinWorkerThreadFactory threadFactory = pool -> {
-            ForkJoinWorkerThread worker = ForkJoinPool.defaultForkJoinWorkerThreadFactory.newThread(pool);
-            worker.setName("Async-Tick-Pool-Thread-" + threadPoolID.getAndIncrement());
-            registerThread("Async-Tick", worker);
-            worker.setDaemon(true);
-            worker.setPriority(Thread.NORM_PRIORITY);
-            worker.setContextClassLoader(asyncClass.getClassLoader());
-            return worker;
-        };
+        tickPool = createThreadPool("Tick", parallelism, Thread.NORM_PRIORITY, asyncClass);
+    }
 
-        tickPool = new ForkJoinPool(parallelism, threadFactory, (t, e) ->
-                LOGGER.error("Uncaught exception in thread {}: {}", t.getName(), e), true);
-        LOGGER.info("Initialized Pool with {} threads", parallelism);
+    private static ForkJoinPool createThreadPool(String name, int parallelism, int priority, Class<?> asyncClass) {
+        ForkJoinPool pool = createNamedForkJoinPool(name, parallelism, priority, asyncClass);
+        managedPools.put(name, pool);
+        LOGGER.info("Initialized {} Pool with {} threads", name, parallelism);
+        return pool;
     }
 
     public static void registerThread(String poolName, Thread thread) {
@@ -72,8 +70,10 @@ public class ParallelProcessor {
     }
 
     private static boolean isThreadInPool(Thread thread) {
-        return mcThreadTracker.getOrDefault("Async-Tick", Set.of()).stream()
+        return mcThreadTracker.values().stream()
+                .flatMap(Set::stream)
                 .map(WeakReference::get)
+                .filter(java.util.Objects::nonNull)
                 .anyMatch(thread::equals);
     }
 
@@ -103,23 +103,24 @@ public class ParallelProcessor {
     }
 
     public static boolean shouldTickSynchronously(Entity entity) {
-        if (entity.level().isClientSide()) {
+        if (entity.level().isClientSide() || isSyncTickRequired(entity)) {
             return true;
         }
+        return handlePortalSync(entity);
+    }
 
-        UUID entityId = entity.getUUID();
-        boolean requiresSyncTick = AsyncConfig.disabled ||
+    private static boolean isSyncTickRequired(Entity entity) {
+        return AsyncConfig.disabled ||
                 entity instanceof Projectile ||
                 entity instanceof AbstractMinecart ||
                 entity instanceof ServerPlayer ||
-                BLOCKED_ENTITIES.contains(entity.getClass()) ||
-                blacklistedEntity.contains(entityId) ||
+                BLOCKED_ENTITIES.stream().anyMatch(c -> c.isAssignableFrom(entity.getClass())) ||
+                blacklistedEntity.contains(entity.getUUID()) ||
                 AsyncConfig.synchronizedEntities.contains(EntityType.getKey(entity.getType()));
+    }
 
-        if (requiresSyncTick) {
-            return true;
-        }
-
+    private static boolean handlePortalSync(Entity entity) {
+        UUID entityId = entity.getUUID();
         if (portalTickSyncMap.containsKey(entityId)) {
             int ticksLeft = portalTickSyncMap.get(entityId);
             if (ticksLeft > 0) {
@@ -129,7 +130,6 @@ public class ParallelProcessor {
                 portalTickSyncMap.remove(entityId);
             }
         }
-
         if (isPortalTickRequired(entity)) {
             portalTickSyncMap.put(entityId, 39);
             return true;
@@ -204,35 +204,56 @@ public class ParallelProcessor {
             return null;
         });
 
-        while (!allTasks.isDone()) {
-            boolean hasTask = false;
-            for (ServerLevel world : server.getAllLevels()) {
-                hasTask |= world.getChunkSource().pollTask();
-            }
-            if (!hasTask) {
-                LockSupport.parkNanos(50_000);
-            }
-        }
-
-        server.getAllLevels().forEach(world -> {
-            world.getChunkSource().pollTask();
-            world.getChunkSource().mainThreadProcessor.managedBlock(allTasks::isDone);
+        server.managedBlock(() -> {
+            allTasks.join();
+            return true;
         });
     }
 
-    @SuppressWarnings("ResultOfMethodCallIgnored")
+    public static void setupChunkIOPool(int paraMax, Class<?> asyncClass) {
+        chunkIOPool = createThreadPool("Chunk-IO", paraMax, Thread.NORM_PRIORITY - 1, asyncClass);
+    }
+
+    public static void setupChunkGenPool(int paraMax, Class<?> asyncClass) {
+        chunkGenPool = createThreadPool("Chunk-Gen", paraMax, Thread.NORM_PRIORITY - 1, asyncClass);
+    }
+
     public static void stop() {
-        if (tickPool != null) {
-            LOGGER.info("Waiting for Async tickPool to shutdown...");
-            tickPool.shutdown();
+        managedPools.forEach((name, pool) -> {
+            LOGGER.info("Shutting down Async {} Pool...", name);
+            pool.shutdown();
+        });
+
+        managedPools.forEach((name, pool) -> {
             try {
-                tickPool.awaitTermination(60L, TimeUnit.SECONDS);
+                if (!pool.awaitTermination(60L, TimeUnit.SECONDS)) {
+                    LOGGER.warn("Async {} Pool did not terminate in 60 seconds.", name);
+                }
             } catch (InterruptedException ignored) {
+                LOGGER.error("Thread pool shutdown interrupted for {} Pool.", name);
             }
-        }
+        });
+
+        managedPools.clear();
+        mcThreadTracker.clear();
     }
 
     private static void logEntityError(String message, Entity entity, Throwable e) {
-        LOGGER.error("{} Entity Type: {}, UUID: {}", message, entity.getType().toString(), entity.getUUID(), e);
+        String entityType = entity.getType() != null ? entity.getType().toString() : "null";
+        LOGGER.error("{} Entity Type: {}, UUID: {}", message, entityType, entity.getUUID(), e);
+    }
+
+    private static ForkJoinPool createNamedForkJoinPool(String poolName, int parallelism, int priority, Class<?> asyncClass) {
+        ForkJoinPool.ForkJoinWorkerThreadFactory threadFactory = pool -> {
+            ForkJoinWorkerThread worker = ForkJoinPool.defaultForkJoinWorkerThreadFactory.newThread(pool);
+            worker.setName("Async-" + poolName + "-Pool-Thread-" + threadPoolID.getAndIncrement());
+            registerThread("Async-" + poolName, worker);
+            worker.setDaemon(true);
+            worker.setPriority(priority);
+            worker.setContextClassLoader(asyncClass.getClassLoader());
+            return worker;
+        };
+        return new ForkJoinPool(parallelism, threadFactory, (t, e) ->
+                LOGGER.error("Uncaught exception in thread {}: {}", t.getName(), e), true);
     }
 }

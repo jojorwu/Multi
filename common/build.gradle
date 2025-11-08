@@ -40,6 +40,13 @@ dependencies {
     compileOnly 'org.projectlombok:lombok:1.18.32'
     annotationProcessor 'org.projectlombok:lombok:1.18.32'
     implementation 'maven.modrinth:lithium:mc1.21.9-0.19.1-neoforge'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+    testImplementation 'org.mockito:mockito-core:4.5.1'
+    testImplementation 'com.mojang:brigadier:1.0.18'
+    testImplementation 'it.unimi.dsi:fastutil:8.5.4'
+    testImplementation 'org.apache.logging.log4j:log4j-api:2.17.1'
+    testImplementation "net.neoforged:neoforge:${neoforge_version}"
 }
 
 configurations {
@@ -56,4 +63,8 @@ configurations {
 artifacts {
     commonJava sourceSets.main.java.sourceDirectories.singleFile
     commonResources sourceSets.main.resources.sourceDirectories.singleFile
+}
+
+test {
+    useJUnitPlatform()
 }
