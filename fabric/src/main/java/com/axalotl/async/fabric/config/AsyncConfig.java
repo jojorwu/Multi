@@ -89,20 +89,20 @@ public class AsyncConfig {
         List<String> ids = CONFIG.getOrElse("synchronizedEntities", synchronizedEntities.stream().map(ResourceLocation::toString).toList());
         if (ids.isEmpty()) {
             com.axalotl.async.common.config.AsyncConfig.synchronizedEntities = new HashSet<>(getDefaultSynchronizedEntities());
-            return;
-        }
-        HashSet<ResourceLocation> set = new HashSet<>();
+        } else {
+            HashSet<ResourceLocation> set = new HashSet<>();
 
-        for (String id : ids) {
-            ResourceLocation rl = ResourceLocation.tryParse(id);
-            if (rl != null) {
-                set.add(rl);
-            } else {
-                LOGGER.warn("Invalid resource location in synchronizedEntities config: {}", id);
+            for (String id : ids) {
+                ResourceLocation rl = ResourceLocation.tryParse(id);
+                if (rl != null) {
+                    set.add(rl);
+                } else {
+                    LOGGER.warn("Invalid resource location in synchronizedEntities config: {}", id);
+                }
             }
-        }
 
-        com.axalotl.async.common.config.AsyncConfig.synchronizedEntities = set;
+            com.axalotl.async.common.config.AsyncConfig.synchronizedEntities = set;
+        }
 
         Set<String> keysToRemove = new HashSet<>();
         for (CommentedConfig.Entry entry : CONFIG.entrySet()) {
