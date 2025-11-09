@@ -121,16 +121,17 @@ public class ParallelProcessor {
 
     private static boolean handlePortalSync(Entity entity) {
         UUID entityId = entity.getUUID();
-        if (portalTickSyncMap.containsKey(entityId)) {
-            int ticksLeft = portalTickSyncMap.get(entityId);
+        Integer ticksLeft = portalTickSyncMap.get(entityId);
+
+        if (ticksLeft != null) {
             if (ticksLeft > 0) {
                 portalTickSyncMap.put(entityId, ticksLeft - 1);
                 return true;
             } else {
                 portalTickSyncMap.remove(entityId);
+                return false;
             }
-        }
-        if (isPortalTickRequired(entity)) {
+        } else if (isPortalTickRequired(entity)) {
             portalTickSyncMap.put(entityId, 39);
             return true;
         }
