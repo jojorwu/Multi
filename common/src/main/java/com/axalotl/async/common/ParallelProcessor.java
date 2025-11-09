@@ -44,6 +44,10 @@ public class ParallelProcessor {
     private static final BlockingQueue<CompletableFuture<?>> taskQueue = new LinkedBlockingQueue<>();
     private static final Set<UUID> blacklistedEntity = ConcurrentHashMap.newKeySet();
     private static final Map<UUID, Integer> portalTickSyncMap = new ConcurrentHashMap<>();
+
+    static void clearPortalTickSyncMap() {
+        portalTickSyncMap.clear();
+    }
     private static final Map<String, ExecutorService> managedPools = new ConcurrentHashMap<>();
     private static final Map<String, Set<WeakReference<Thread>>> mcThreadTracker = new ConcurrentHashMap<>();
     public static final Set<Class<?>> BLOCKED_ENTITIES = Set.of(

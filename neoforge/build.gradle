@@ -83,7 +83,8 @@ dependencies {
     testImplementation 'it.unimi.dsi:fastutil:8.5.4'
     testImplementation 'org.apache.logging.log4j:log4j-api:2.17.1'
     testImplementation 'org.apache.logging.log4j:log4j-core:2.17.1'
-    testImplementation project(':common')
+    testImplementation project(path: ':common', configuration: 'commonJava')
+    testImplementation "net.neoforged:neoforge:${neoforge_version}"
 }
 
 test {
