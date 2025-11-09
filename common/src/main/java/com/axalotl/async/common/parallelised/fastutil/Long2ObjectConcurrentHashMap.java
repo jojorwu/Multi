@@ -136,8 +136,7 @@ public final class Long2ObjectConcurrentHashMap<V> implements Long2ObjectMap<V> 
      * @return true if the value was removed
      */
     public boolean remove(long key, Object value) {
-        V previous = backing.remove(key);
-        return backing.remove(key, previous);
+        return backing.remove(key, value);
     }
 
     /**
