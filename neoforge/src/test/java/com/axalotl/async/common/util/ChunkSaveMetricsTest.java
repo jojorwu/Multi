@@ -11,8 +11,8 @@ public class ChunkSaveMetricsTest {
         Logger logger = mock(Logger.class);
 
         ChunkSaveMetrics.reset();
-        ChunkSaveMetrics.chunksSaved.set(10);
-        ChunkSaveMetrics.totalSaveTime.set(123490000);
+        ChunkSaveMetrics.setChunksSaved(10);
+        ChunkSaveMetrics.setTotalSaveTime(123490000);
 
         ChunkSaveMetrics.printMetrics(logger);
 
