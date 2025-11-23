@@ -17,14 +17,14 @@ public class ChunkMapMixin {
     private void onSave(ChunkStorage storage, ChunkPos pos, java.util.function.Supplier<net.minecraft.nbt.CompoundTag> tag) {
         final long startTime = System.currentTimeMillis();
         CompletableFuture.runAsync(() -> {
-            storage.write(pos, () -> tag.get());
+            storage.write(pos, tag);
         }, ParallelProcessor.chunkIOPool).whenComplete((v, e) -> {
             if (e != null) {
                 ParallelProcessor.LOGGER.error("Failed to save chunk async", e);
-                com.axalotl.async.common.util.ChunkSaveMetrics.errors.incrementAndGet();
+                com.axalotl.async.common.util.ChunkSaveMetrics.incrementErrors();
             } else {
-                com.axalotl.async.common.util.ChunkSaveMetrics.chunksSaved.incrementAndGet();
-                com.axalotl.async.common.util.ChunkSaveMetrics.totalSaveTime.addAndGet(System.currentTimeMillis() - startTime);
+                com.axalotl.async.common.util.ChunkSaveMetrics.incrementChunksSaved();
+                com.axalotl.async.common.util.ChunkSaveMetrics.addSaveTime(System.currentTimeMillis() - startTime);
             }
         });
     }
