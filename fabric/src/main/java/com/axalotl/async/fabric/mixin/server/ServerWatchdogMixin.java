@@ -15,20 +15,18 @@ import java.util.Map;
 public class ServerWatchdogMixin {
 
     @Inject(method = "run", at = @At(value = "INVOKE", target = "Lnet/minecraft/CrashReport;addCategory(Ljava/lang/String;)Lnet/minecraft/CrashReportCategory;"), locals = LocalCapture.CAPTURE_FAILSOFT)
-    private void addCustomCrashReport(CallbackInfo ci, long i, long j, long k, CrashReport crashreport){
-        CrashReportCategory threadDumpSection = crashreport.addCategory("Async thread dump");
-        threadDumpSection.setDetail("All Threads", () -> {
-            StringBuilder sb = new StringBuilder();
-            Map<Thread, StackTraceElement[]> allThreads = Thread.getAllStackTraces();
-            for (Map.Entry<Thread, StackTraceElement[]> entry : allThreads.entrySet()) {
-                Thread t = entry.getKey();
-                sb.append(String.format("\"%s\" [%s]%n", t.getName(), t.getState()));
-                for (StackTraceElement ste : entry.getValue()) {
-                    sb.append("\tat ").append(ste).append("\n");
-                }
-                sb.append("\n");
-            }
-            return sb.toString();
-        });
+    private void addCustomCrashReport(CallbackInfo ci, long i, long j, long k, CrashReport crashreport) {
+        crashreport.addCategory("Async thread dump")
+                .setDetail("All Threads", () -> {
+                    StringBuilder sb = new StringBuilder();
+                    Thread.getAllStackTraces().forEach((thread, stackTrace) -> {
+                        sb.append(String.format("\"%s\" [%s]%n", thread.getName(), thread.getState()));
+                        for (StackTraceElement ste : stackTrace) {
+                            sb.append("\tat ").append(ste).append("\n");
+                        }
+                        sb.append("\n");
+                    });
+                    return sb.toString();
+                });
     }
 }
