@@ -11,7 +11,6 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 import static com.axalotl.async.common.config.AsyncConfig.*;
-import static com.axalotl.async.common.config.AsyncConfig.getDefaultSynchronizedEntities;
 
 public class AsyncConfig {
     private static final Supplier<CommentedFileConfig> configSupplier =
@@ -43,25 +42,25 @@ public class AsyncConfig {
     }
 
     public static void saveConfig() {
-        CONFIG.set("disabled", disabled);
+        CONFIG.set("disabled", isDisabled());
         CONFIG.setComment("disabled", "Enables parallel processing of entity.");
 
-        CONFIG.set("paraMax", paraMax);
+        CONFIG.set("paraMax", getParaMax());
         CONFIG.setComment("paraMax", "Maximum number of threads to use for parallel processing. Set to -1 to use default value. Note: If 'virtualThreads' is enabled, this setting will be ignored.");
 
         CONFIG.set("synchronizedEntities", synchronizedEntities.stream().map(ResourceLocation::toString).toList());
         CONFIG.setComment("synchronizedEntities", "List of entity class for sync processing.");
 
-        CONFIG.set("enableAsyncSpawn", enableAsyncSpawn);
+        CONFIG.set("enableAsyncSpawn", isEnableAsyncSpawn());
         CONFIG.setComment("enableAsyncSpawn", "Enables parallel processing of entity spawns. Warning, incompatible with Carpet mod lagFreeSpawning rule.");
 
-        CONFIG.set("enableAsyncRandomTicks", enableAsyncRandomTicks);
+        CONFIG.set("enableAsyncRandomTicks", isEnableAsyncRandomTicks());
         CONFIG.setComment("enableAsyncRandomTicks", "Experimental! Enables async processing of random ticks.");
 
-        CONFIG.set("chunkIOParaMax", chunkIOParaMax);
+        CONFIG.set("chunkIOParaMax", getChunkIOParaMax());
         CONFIG.setComment("chunkIOParaMax", "Maximum number of threads to use for chunk IO. Set to -1 to use default value.");
 
-        CONFIG.set("chunkGenParaMax", chunkGenParaMax);
+        CONFIG.set("chunkGenParaMax", getChunkGenParaMax());
         CONFIG.setComment("chunkGenParaMax", "Maximum number of threads to use for chunk generation. Set to -1 to use default value.");
 
         CONFIG.save();
@@ -79,12 +78,12 @@ public class AsyncConfig {
                 "enableAsyncRandomTicks"
         ));
 
-        disabled = CONFIG.getOrElse("disabled", disabled);
-        paraMax = CONFIG.getOrElse("paraMax", paraMax);
-        chunkIOParaMax = CONFIG.getOrElse("chunkIOParaMax", chunkIOParaMax);
-        chunkGenParaMax = CONFIG.getOrElse("chunkGenParaMax", chunkGenParaMax);
-        enableAsyncSpawn = CONFIG.getOrElse("enableAsyncSpawn", enableAsyncSpawn);
-        enableAsyncRandomTicks = CONFIG.getOrElse("enableAsyncRandomTicks", enableAsyncRandomTicks);
+        setDisabled(CONFIG.getOrElse("disabled", isDisabled()));
+        setParaMax(CONFIG.getOrElse("paraMax", getParaMax()));
+        setChunkIOParaMax(CONFIG.getOrElse("chunkIOParaMax", getChunkIOParaMax()));
+        setChunkGenParaMax(CONFIG.getOrElse("chunkGenParaMax", getChunkGenParaMax()));
+        setEnableAsyncSpawn(CONFIG.getOrElse("enableAsyncSpawn", isEnableAsyncSpawn()));
+        setEnableAsyncRandomTicks(CONFIG.getOrElse("enableAsyncRandomTicks", isEnableAsyncRandomTicks()));
 
         List<String> ids = CONFIG.getOrElse("synchronizedEntities", synchronizedEntities.stream().map(ResourceLocation::toString).toList());
         HashSet<ResourceLocation> set = new HashSet<>();
@@ -117,12 +116,12 @@ public class AsyncConfig {
     }
 
     private static void setDefaultValues() {
-        disabled = false;
-        paraMax = -1;
-        chunkIOParaMax = -1;
-        chunkGenParaMax = -1;
-        enableAsyncSpawn = true;
-        enableAsyncRandomTicks = false;
+        setDisabled(false);
+        setParaMax(-1);
+        setChunkIOParaMax(-1);
+        setChunkGenParaMax(-1);
+        setEnableAsyncSpawn(true);
+        setEnableAsyncRandomTicks(false);
         synchronizedEntities = getDefaultSynchronizedEntities();
     }
 }

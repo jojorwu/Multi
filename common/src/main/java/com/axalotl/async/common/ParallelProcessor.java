@@ -14,20 +14,18 @@ import net.minecraft.world.entity.monster.Shulker;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.vehicle.AbstractMinecart;
 import net.minecraft.world.entity.vehicle.Boat;
-import net.minecraft.world.level.*;
+import net.minecraft.world.level.NaturalSpawner;
 import net.minecraft.world.level.chunk.LevelChunk;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.lang.ref.WeakReference;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.LockSupport;
 
 public class ParallelProcessor {
     public static final Logger LOGGER = LogManager.getLogger(ParallelProcessor.class);
@@ -111,7 +109,7 @@ public class ParallelProcessor {
     }
 
     private static boolean isSyncTickRequired(Entity entity) {
-        if (AsyncConfig.disabled) {
+        if (AsyncConfig.isDisabled()) {
             return true;
         }
         if (entity instanceof Projectile || entity instanceof AbstractMinecart || entity instanceof ServerPlayer) {
@@ -165,7 +163,7 @@ public class ParallelProcessor {
     }
 
     public static void asyncSpawnForChunk(ServerLevel level, LevelChunk chunk, NaturalSpawner.SpawnState spawnState, List<MobCategory> categories) {
-        if (!AsyncConfig.disabled && AsyncConfig.enableAsyncSpawn) {
+        if (!AsyncConfig.isDisabled() && AsyncConfig.isEnableAsyncSpawn()) {
             CompletableFuture<Void> future = CompletableFuture.runAsync(() -> NaturalSpawner.spawnForChunk(level, chunk, spawnState, categories), ParallelProcessor.tickPool).exceptionally(e -> {
                 ParallelProcessor.LOGGER.error("Error in async spawn, switching to synchronous", e);
                 NaturalSpawner.spawnForChunk(level, chunk, spawnState, categories);
@@ -178,7 +176,7 @@ public class ParallelProcessor {
     }
 
     public static void asyncDespawn(Entity entity) {
-        if (!AsyncConfig.disabled && AsyncConfig.enableAsyncSpawn) {
+        if (!AsyncConfig.isDisabled() && AsyncConfig.isEnableAsyncSpawn()) {
             CompletableFuture<Void> future = CompletableFuture.runAsync(entity::checkDespawn, tickPool
             ).exceptionally(e -> {
                 LOGGER.error("Error in async spawn tick, switching to synchronous", e);
@@ -192,7 +190,7 @@ public class ParallelProcessor {
     }
 
     public static void postEntityTick() {
-        if (AsyncConfig.disabled) return;
+        if (AsyncConfig.isDisabled()) return;
 
         server.managedBlock(() -> {
             CompletableFuture<?> future;

@@ -80,8 +80,8 @@ public class StatsCommand {
                 .append(Component.literal("\nAverage Active Processing Threads: ").withStyle(style -> style.withColor(ChatFormatting.WHITE)))
                 .append(Component.literal(DECIMAL_FORMAT.format(Math.ceil(avgThreads))).withStyle(style -> style.withColor(ChatFormatting.GREEN)))
                 .append(Component.literal("\nAsync Status: ").withStyle(style -> style.withColor(ChatFormatting.WHITE)))
-                .append(Component.literal(AsyncConfig.disabled ? "disabled" : "Enabled").withStyle(style ->
-                        style.withColor(AsyncConfig.disabled ? ChatFormatting.RED : ChatFormatting.GREEN)));
+                .append(Component.literal(AsyncConfig.isDisabled() ? "disabled" : "Enabled").withStyle(style ->
+                        style.withColor(AsyncConfig.isDisabled() ? ChatFormatting.RED : ChatFormatting.GREEN)));
 
         source.sendSuccess(() -> message, true);
     }
@@ -216,7 +216,7 @@ public class StatsCommand {
     }
 
     private static void updateStats() {
-        if (AsyncConfig.disabled) {
+        if (AsyncConfig.isDisabled()) {
             resetStats();
             return;
         }

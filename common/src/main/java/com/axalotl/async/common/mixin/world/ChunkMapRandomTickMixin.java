@@ -21,7 +21,7 @@ public abstract class ChunkMapRandomTickMixin {
 
     @WrapOperation(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerLevel;tickChunk(Lnet/minecraft/world/level/chunk/LevelChunk;I)V"))
     private void onTickChunk(ServerLevel instance, LevelChunk chunk, int randomTickSpeed, Operation<Void> original) {
-        if (AsyncConfig.disabled || !AsyncConfig.enableAsyncRandomTicks) {
+        if (AsyncConfig.isDisabled() || !AsyncConfig.isEnableAsyncRandomTicks()) {
             original.call(instance, chunk, randomTickSpeed);
             return;
         }
