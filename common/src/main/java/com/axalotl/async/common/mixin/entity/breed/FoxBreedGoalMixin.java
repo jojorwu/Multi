@@ -27,7 +27,7 @@ public abstract class FoxBreedGoalMixin extends BreedGoal {
     }
 
     @Inject(method = "breed", at = @At("HEAD"), cancellable = true)
-    private void preventDoubleBreed(CallbackInfo ci) {
+    private synchronized void preventDoubleBreed(CallbackInfo ci) {
         String pairKey = async$getPairKey();
         if (async$breedingPairs.putIfAbsent(pairKey, Boolean.TRUE) != null) {
             ci.cancel();
@@ -37,18 +37,10 @@ public abstract class FoxBreedGoalMixin extends BreedGoal {
     @Unique
     private String async$getPairKey() {
         UUID id1 = this.animal.getUUID();
-        UUID id2 = null;
-        if (this.partner != null) {
-            id2 = this.partner.getUUID();
+        if (this.partner == null) {
+            return id1.toString();
         }
-        String s1 = id1.toString();
-        String s2 = null;
-        if (id2 != null) {
-            s2 = id2.toString();
-        }
-        if (s2 != null) {
-            return s1.compareTo(s2) <= 0 ? s1 + "|" + s2 : s2 + "|" + s1;
-        }
-        return s1;
+        UUID id2 = this.partner.getUUID();
+        return id1.compareTo(id2) <= 0 ? id1 + "|" + id2 : id2 + "|" + id1;
     }
 }
