@@ -132,8 +132,9 @@ public class ParallelProcessor {
             if (ticksLeft > 0) {
                 portalTickSyncMap.put(entityId, ticksLeft - 1);
                 return true;
+            } else {
+                portalTickSyncMap.remove(entityId);
             }
-            portalTickSyncMap.remove(entityId);
         }
         if (isPortalTickRequired(entity)) {
             portalTickSyncMap.put(entityId, PORTAL_SYNC_TICKS);
