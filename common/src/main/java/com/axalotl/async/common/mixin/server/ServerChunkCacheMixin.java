@@ -38,7 +38,7 @@ public abstract class ServerChunkCacheMixin extends ChunkSource {
     @Inject(method = "getChunk(IILnet/minecraft/world/level/chunk/status/ChunkStatus;Z)Lnet/minecraft/world/level/chunk/ChunkAccess;",
             at = @At("HEAD"), cancellable = true)
     private void shortcutGetChunk(int x, int z, ChunkStatus leastStatus, boolean create, CallbackInfoReturnable<ChunkAccess> cir) {
-        if (AsyncCommon.LITHIUM) return;
+        if (AsyncCommon.isLithiumLoaded()) return;
         if (Thread.currentThread() == this.mainThread) {
             return;
         }
