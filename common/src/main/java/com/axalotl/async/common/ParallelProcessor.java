@@ -46,6 +46,7 @@ public class ParallelProcessor {
     private static final Map<UUID, Integer> portalTickSyncMap = new ConcurrentHashMap<>();
     private static final Map<String, ExecutorService> managedPools = new ConcurrentHashMap<>();
     private static final Map<String, Set<WeakReference<Thread>>> mcThreadTracker = new ConcurrentHashMap<>();
+    private static final int PORTAL_SYNC_TICKS = 39;
     public static final Set<Class<?>> BLOCKED_ENTITIES = Set.of(
             FallingBlockEntity.class,
             Shulker.class,
@@ -110,13 +111,19 @@ public class ParallelProcessor {
     }
 
     private static boolean isSyncTickRequired(Entity entity) {
-        return AsyncConfig.disabled ||
-                entity instanceof Projectile ||
-                entity instanceof AbstractMinecart ||
-                entity instanceof ServerPlayer ||
-                BLOCKED_ENTITIES.stream().anyMatch(c -> c.isAssignableFrom(entity.getClass())) ||
-                blacklistedEntity.contains(entity.getUUID()) ||
-                AsyncConfig.synchronizedEntities.contains(EntityType.getKey(entity.getType()));
+        if (AsyncConfig.disabled) {
+            return true;
+        }
+        if (entity instanceof Projectile || entity instanceof AbstractMinecart || entity instanceof ServerPlayer) {
+            return true;
+        }
+        for (Class<?> blockedClass : BLOCKED_ENTITIES) {
+            if (blockedClass.isAssignableFrom(entity.getClass())) {
+                return true;
+            }
+        }
+        return blacklistedEntity.contains(entity.getUUID())
+                || AsyncConfig.synchronizedEntities.contains(EntityType.getKey(entity.getType()));
     }
 
     private static boolean handlePortalSync(Entity entity) {
@@ -126,12 +133,11 @@ public class ParallelProcessor {
             if (ticksLeft > 0) {
                 portalTickSyncMap.put(entityId, ticksLeft - 1);
                 return true;
-            } else {
-                portalTickSyncMap.remove(entityId);
             }
+            portalTickSyncMap.remove(entityId);
         }
         if (isPortalTickRequired(entity)) {
-            portalTickSyncMap.put(entityId, 39);
+            portalTickSyncMap.put(entityId, PORTAL_SYNC_TICKS);
             return true;
         }
         return false;
@@ -187,25 +193,18 @@ public class ParallelProcessor {
 
     public static void postEntityTick() {
         if (AsyncConfig.disabled) return;
-        List<CompletableFuture<?>> futuresList = new ArrayList<>();
-        CompletableFuture<?> future;
-        while ((future = taskQueue.poll()) != null) {
-            futuresList.add(future);
-        }
-
-        CompletableFuture<?> allTasks = CompletableFuture.allOf(
-                futuresList.toArray(new CompletableFuture[0])
-        );
-
-        allTasks.exceptionally(ex -> {
-            Throwable cause = ex instanceof java.util.concurrent.CompletionException
-                    ? ex.getCause() : ex;
-            LOGGER.error("Error during entity tick processing: ", cause);
-            return null;
-        });
 
         server.managedBlock(() -> {
-            allTasks.join();
+            CompletableFuture<?> future;
+            while ((future = taskQueue.poll()) != null) {
+                try {
+                    future.join();
+                } catch (Exception ex) {
+                    Throwable cause = ex instanceof java.util.concurrent.CompletionException
+                            ? ex.getCause() : ex;
+                    LOGGER.error("Error during entity tick processing: ", cause);
+                }
+            }
             return true;
         });
     }
