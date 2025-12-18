@@ -61,7 +61,7 @@ public class StatsCommand {
         AsyncCommand.register(dispatcher);
         dispatcher.register(literal("async").then(literal("chunkstats")
                 .executes(context -> {
-                    ChunkSaveMetrics.printMetrics(ParallelProcessor.LOGGER);
+                    ChunkSaveMetrics.printMetrics();
                     return 1;
                 })
                 .then(literal("reset")
