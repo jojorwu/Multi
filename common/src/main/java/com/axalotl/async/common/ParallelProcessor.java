@@ -20,6 +20,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -191,18 +192,25 @@ public class ParallelProcessor {
 
     public static void postEntityTick() {
         if (AsyncConfig.isDisabled()) return;
+        List<CompletableFuture<?>> futuresList = new ArrayList<>();
+        CompletableFuture<?> future;
+        while ((future = taskQueue.poll()) != null) {
+            futuresList.add(future);
+        }
+
+        CompletableFuture<?> allTasks = CompletableFuture.allOf(
+                futuresList.toArray(new CompletableFuture[0])
+        );
+
+        allTasks.exceptionally(ex -> {
+            Throwable cause = ex instanceof java.util.concurrent.CompletionException
+                    ? ex.getCause() : ex;
+            LOGGER.error("Error during entity tick processing: ", cause);
+            return null;
+        });
 
         server.managedBlock(() -> {
-            CompletableFuture<?> future;
-            while ((future = taskQueue.poll()) != null) {
-                try {
-                    future.join();
-                } catch (Exception ex) {
-                    Throwable cause = ex instanceof java.util.concurrent.CompletionException
-                            ? ex.getCause() : ex;
-                    LOGGER.error("Error during entity tick processing: ", cause);
-                }
-            }
+            allTasks.join();
             return true;
         });
     }
