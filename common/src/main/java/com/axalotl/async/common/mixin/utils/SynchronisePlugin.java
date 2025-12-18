@@ -82,9 +82,13 @@ public class SynchronisePlugin implements IMixinConfigPlugin {
     }
 
     private void logSynchronize(String methodName, String targetClassName, String mixinClassName) {
-        if (mixinClassName == null || !mixinClassName.equals("com.axalotl.async.mixin.utils.FastUtilsMixin")) {
-            String message = "Setting synchronize bit for " + methodName + " in " + targetClassName + ".";
-            LOGGER.debug(message);
+        if (mixinClassName != null && mixinClassName.equals("com.axalotl.async.common.mixin.utils.FastUtilsMixin")) {
+            return;
         }
+        String message = "Setting synchronize bit for " + methodName + " in " + targetClassName;
+        if (mixinClassName != null) {
+            message += " from mixin " + mixinClassName;
+        }
+        LOGGER.debug(message + ".");
     }
 }
