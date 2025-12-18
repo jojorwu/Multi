@@ -93,12 +93,10 @@ public final class ConcurrentShortHashSet implements ShortSet {
 
     @Override
     public short[] toShortArray() {
-        int size = backing.size();
-        short[] result = new short[size];
-        int i = 0;
-        // Используем for-each для обхода backing
-        for (Short value : backing) {
-            result[i++] = value;
+        Short[] boxedArray = backing.toArray(new Short[0]);
+        short[] result = new short[boxedArray.length];
+        for (int i = 0; i < boxedArray.length; i++) {
+            result[i] = boxedArray[i];
         }
         return result;
     }
