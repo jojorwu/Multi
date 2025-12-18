@@ -10,13 +10,14 @@ import net.minecraft.world.level.Level;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Mixin(Frog.class)
 public abstract class FrogMixin extends Animal {
 
     @Unique
-    private final AtomicBoolean async$breedingFlag = new AtomicBoolean(false);
+    private static final ConcurrentHashMap<String, Boolean> async$breedingPairs = new ConcurrentHashMap<>();
 
     protected FrogMixin(EntityType<? extends Animal> entityType, Level world) {
         super(entityType, world);
@@ -24,15 +25,20 @@ public abstract class FrogMixin extends Animal {
 
     @WrapMethod(method = "spawnChildFromBreeding")
     private void breed(ServerLevel world, Animal other, Operation<Void> original) {
-        if (this.getId() > other.getId()) return;
-        FrogMixin otherMixin = (FrogMixin) other;
-        if (this.async$breedingFlag.compareAndSet(false, true) && otherMixin.async$breedingFlag.compareAndSet(false, true)) {
+        String pairKey = getPairKey(this, other);
+        if (async$breedingPairs.putIfAbsent(pairKey, true) == null) {
             try {
                 original.call(world, other);
             } finally {
-                this.async$breedingFlag.set(false);
-                otherMixin.async$breedingFlag.set(false);
+                async$breedingPairs.remove(pairKey);
             }
         }
+    }
+
+    @Unique
+    private static String getPairKey(Animal first, Animal second) {
+        UUID id1 = first.getUUID();
+        UUID id2 = second.getUUID();
+        return id1.compareTo(id2) < 0 ? id1 + "|" + id2 : id2 + "|" + id1;
     }
 }
