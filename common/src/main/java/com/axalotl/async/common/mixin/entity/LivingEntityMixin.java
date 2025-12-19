@@ -65,11 +65,7 @@ public abstract class LivingEntityMixin extends Entity {
             )
     )
     private boolean wrapTickEffect(MobEffectInstance instance, ServerLevel level, LivingEntity entity, Runnable onEffectUpdated, Operation<Boolean> original) {
-        if (instance != null) {
-            return original.call(instance, level, entity, onEffectUpdated);
-        } else {
-            return false;
-        }
+        return original.call(instance, level, entity, onEffectUpdated);
     }
 
     @WrapOperation(
@@ -103,7 +99,7 @@ public abstract class LivingEntityMixin extends Entity {
 
     @Inject(method = "causeFallDamage", at = @At("HEAD"), cancellable = true)
     private void causeFallDamage(double fallDistance, float multiplier, DamageSource source, CallbackInfoReturnable<Boolean> cir) {
-        BlockPos pos = new BlockPos(Mth.floor(this.getX()), Mth.floor(this.getY()), Mth.floor(this.getZ()));
+        BlockPos pos = this.blockPosition();
         BlockState currentBlock = this.level().getBlockState(pos);
 
         if (currentBlock.is(BlockTags.CLIMBABLE)) {
