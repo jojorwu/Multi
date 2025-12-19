@@ -116,10 +116,8 @@ public class ParallelProcessor {
         if (entity instanceof Projectile || entity instanceof AbstractMinecart || entity instanceof ServerPlayer) {
             return true;
         }
-        for (Class<?> blockedClass : BLOCKED_ENTITIES) {
-            if (blockedClass.isAssignableFrom(entity.getClass())) {
-                return true;
-            }
+        if (BLOCKED_ENTITIES.stream().anyMatch(blockedClass -> blockedClass.isAssignableFrom(entity.getClass()))) {
+            return true;
         }
         return blacklistedEntity.contains(entity.getUUID())
                 || AsyncConfig.synchronizedEntities.contains(EntityType.getKey(entity.getType()));
@@ -194,10 +192,7 @@ public class ParallelProcessor {
     public static void postEntityTick() {
         if (AsyncConfig.isDisabled()) return;
         List<CompletableFuture<?>> futuresList = new ArrayList<>();
-        CompletableFuture<?> future;
-        while ((future = taskQueue.poll()) != null) {
-            futuresList.add(future);
-        }
+        taskQueue.drainTo(futuresList);
 
         CompletableFuture<?> allTasks = CompletableFuture.allOf(
                 futuresList.toArray(new CompletableFuture[0])
