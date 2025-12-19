@@ -18,7 +18,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
@@ -33,9 +32,6 @@ public abstract class LivingEntityMixin extends Entity {
 
     @Shadow
     final private Map<Holder<MobEffect>, MobEffectInstance> activeEffects = new ConcurrentHashMap<>();
-
-    @Unique
-    private static final Object async$lock = new Object();
 
     public LivingEntityMixin(EntityType<?> type, Level world) {
         super(type, world);
@@ -53,16 +49,12 @@ public abstract class LivingEntityMixin extends Entity {
 
     @WrapMethod(method = "knockback")
     private synchronized void knockback(double strength, double x, double z, Operation<Void> original) {
-        synchronized (async$lock) {
-            original.call(strength, x, z);
-        }
+        original.call(strength, x, z);
     }
 
     @WrapMethod(method = "tickEffects")
-    private void tickStatusEffects(Operation<Void> original) {
-        synchronized (async$lock) {
-            original.call();
-        }
+    private synchronized void tickStatusEffects(Operation<Void> original) {
+        original.call();
     }
 
     @WrapOperation(
@@ -73,11 +65,7 @@ public abstract class LivingEntityMixin extends Entity {
             )
     )
     private boolean wrapTickEffect(MobEffectInstance instance, ServerLevel level, LivingEntity entity, Runnable onEffectUpdated, Operation<Boolean> original) {
-        if (instance != null) {
-            return original.call(instance, level, entity, onEffectUpdated);
-        } else {
-            return false;
-        }
+        return original.call(instance, level, entity, onEffectUpdated);
     }
 
     @WrapOperation(
@@ -95,29 +83,23 @@ public abstract class LivingEntityMixin extends Entity {
     }
 
     @WrapMethod(method = "addEffect(Lnet/minecraft/world/effect/MobEffectInstance;Lnet/minecraft/world/entity/Entity;)Z")
-    private boolean addEffect(MobEffectInstance effect, Entity source, Operation<Boolean> original) {
-        synchronized (async$lock) {
-            return original.call(effect, source);
-        }
+    private synchronized boolean addEffect(MobEffectInstance effect, Entity source, Operation<Boolean> original) {
+        return original.call(effect, source);
     }
 
     @WrapMethod(method = "removeEffect")
-    private boolean removeEffect(Holder<MobEffect> effect, Operation<Boolean> original) {
-        synchronized (async$lock) {
-            return original.call(effect);
-        }
+    private synchronized boolean removeEffect(Holder<MobEffect> effect, Operation<Boolean> original) {
+        return original.call(effect);
     }
 
     @WrapMethod(method = "removeAllEffects")
-    private boolean removeAllEffects(Operation<Boolean> original) {
-        synchronized (async$lock) {
-            return original.call();
-        }
+    private synchronized boolean removeAllEffects(Operation<Boolean> original) {
+        return original.call();
     }
 
     @Inject(method = "causeFallDamage", at = @At("HEAD"), cancellable = true)
     private void causeFallDamage(double fallDistance, float multiplier, DamageSource source, CallbackInfoReturnable<Boolean> cir) {
-        BlockPos pos = new BlockPos(Mth.floor(this.getX()), Mth.floor(this.getY()), Mth.floor(this.getZ()));
+        BlockPos pos = this.blockPosition();
         BlockState currentBlock = this.level().getBlockState(pos);
 
         if (currentBlock.is(BlockTags.CLIMBABLE)) {

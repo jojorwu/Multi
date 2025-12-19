@@ -6,27 +6,19 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.npc.Villager;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Unique;
 
 @Mixin(Villager.class)
 public class VillagerMixin {
 
-    @Unique
-    private static final Object async$lock = new Object();
-
     @WrapMethod(method = "pickUpItem")
-    private void pickUpItem(ServerLevel level, ItemEntity entity, Operation<Void> original) {
-        synchronized (async$lock) {
-            if (!entity.isRemoved()) {
-                original.call(level, entity);
-            }
+    private synchronized void pickUpItem(ServerLevel level, ItemEntity entity, Operation<Void> original) {
+        if (!entity.isRemoved()) {
+            original.call(level, entity);
         }
     }
 
     @WrapMethod(method = "spawnGolemIfNeeded")
-    private void spawnGolemIfNeeded(ServerLevel world, long time, int requiredCount, Operation<Void> original) {
-        synchronized (async$lock) {
-            original.call(world, time, requiredCount);
-        }
+    private synchronized void spawnGolemIfNeeded(ServerLevel world, long time, int requiredCount, Operation<Void> original) {
+        original.call(world, time, requiredCount);
     }
 }

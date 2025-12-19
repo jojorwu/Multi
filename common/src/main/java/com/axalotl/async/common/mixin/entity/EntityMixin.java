@@ -13,7 +13,6 @@ import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
 
 @Mixin(Entity.class)
 public abstract class EntityMixin {
@@ -24,14 +23,9 @@ public abstract class EntityMixin {
     @Shadow
     public abstract BlockPos blockPosition();
 
-    @Unique
-    private final Object async$lock = new Object();
-
     @WrapMethod(method = "setRemoved")
-    private void setRemoved(Entity.RemovalReason reason, Operation<Void> original) {
-        synchronized (async$lock) {
-            original.call(reason);
-        }
+    private synchronized void setRemoved(Entity.RemovalReason reason, Operation<Void> original) {
+        original.call(reason);
     }
 
     @WrapMethod(method = "getInBlockState")
@@ -63,23 +57,17 @@ public abstract class EntityMixin {
 
 
     @WrapMethod(method = "addPassenger")
-    private void addPassenger(Entity passenger, Operation<Void> original) {
-        synchronized (async$lock) {
-            original.call(passenger);
-        }
+    private synchronized void addPassenger(Entity passenger, Operation<Void> original) {
+        original.call(passenger);
     }
 
     @WrapMethod(method = "removePassenger")
-    private void removePassenger(Entity passenger, Operation<Void> original) {
-        synchronized (async$lock) {
-            original.call(passenger);
-        }
+    private synchronized void removePassenger(Entity passenger, Operation<Void> original) {
+        original.call(passenger);
     }
 
     @WrapMethod(method = "ejectPassengers")
-    private void ejectPassengers(Operation<Void> original) {
-        synchronized (async$lock) {
-            original.call();
-        }
+    private synchronized void ejectPassengers(Operation<Void> original) {
+        original.call();
     }
 }

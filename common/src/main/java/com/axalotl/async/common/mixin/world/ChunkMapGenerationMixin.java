@@ -17,7 +17,7 @@ import java.util.concurrent.CompletableFuture;
 public class ChunkMapGenerationMixin {
     @Redirect(method = "scheduleChunkGenerationTask", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ChunkHolder;scheduleChunkGenerationTask(Lnet/minecraft/world/level/chunk/status/ChunkStatus;Lnet/minecraft/server/level/ChunkMap;)Ljava/util/concurrent/CompletableFuture;"))
     private CompletableFuture<ChunkResult<ChunkAccess>> onScheduleChunkGenerationTask(ChunkHolder holder, ChunkStatus status, ChunkMap map) {
-        if (AsyncConfig.disabled) {
+        if (AsyncConfig.isDisabled()) {
             return holder.scheduleChunkGenerationTask(status, map);
         }
         return CompletableFuture.supplyAsync(() -> holder.scheduleChunkGenerationTask(status, map), ParallelProcessor.chunkGenPool)

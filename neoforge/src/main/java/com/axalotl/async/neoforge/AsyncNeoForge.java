@@ -16,7 +16,7 @@ import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import org.slf4j.Logger;
 
-import static com.axalotl.async.common.config.AsyncConfig.getParallelism;
+import static com.axalotl.async.common.config.AsyncConfig.getParaMax;
 import static com.axalotl.async.neoforge.config.AsyncConfig.SPEC;
 import static com.axalotl.async.neoforge.config.AsyncConfig.loadConfig;
 
@@ -39,7 +39,7 @@ public class AsyncNeoForge {
         loadConfig();
         StatsCommand.runStatsThread();
         ParallelProcessor.setServer(event.getServer());
-        ParallelProcessor.setupThreadPool(getParallelism(), this.getClass());
+        ParallelProcessor.setupThreadPool(getParaMax(), this.getClass());
         ParallelProcessor.setupChunkIOPool(com.axalotl.async.common.config.AsyncConfig.getChunkIOParaMax(), this.getClass());
         ParallelProcessor.setupChunkGenPool(com.axalotl.async.common.config.AsyncConfig.getChunkGenParaMax(), this.getClass());
     }

@@ -8,39 +8,27 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Unique;
 
 @Mixin(Mob.class)
 public class MobMixin {
 
-    @Unique
-    private static final Object async$lock = new Object();
-
     @WrapMethod(method = "equipItemIfPossible")
-    private ItemStack tryEquip(ServerLevel level, ItemStack stack, Operation<ItemStack> original) {
-        synchronized (async$lock) {
-            return original.call(level, stack);
-        }
+    private synchronized ItemStack wrapEquipItemIfPossible(ServerLevel level, ItemStack stack, Operation<ItemStack> original) {
+        return original.call(level, stack);
     }
 
     @WrapMethod(method = "pickUpItem")
-    private void pickUpItem(ServerLevel level, ItemEntity entity, Operation<Void> original) {
-        synchronized (async$lock) {
-            original.call(level, entity);
-        }
+    private synchronized void wrapPickUpItem(ServerLevel level, ItemEntity entity, Operation<Void> original) {
+        original.call(level, entity);
     }
 
     @WrapMethod(method = "setItemSlotAndDropWhenKilled")
-    private void equipLootStack(EquipmentSlot slot, ItemStack stack, Operation<Void> original) {
-        synchronized (async$lock) {
-            original.call(slot, stack);
-        }
+    private synchronized void wrapSetItemSlotAndDropWhenKilled(EquipmentSlot slot, ItemStack stack, Operation<Void> original) {
+        original.call(slot, stack);
     }
 
     @WrapMethod(method = "setBodyArmorItem")
-    private void equipLootStack(ItemStack stack, Operation<Void> original) {
-        synchronized (async$lock) {
-            original.call(stack);
-        }
+    private synchronized void wrapSetBodyArmorItem(ItemStack stack, Operation<Void> original) {
+        original.call(stack);
     }
 }

@@ -23,25 +23,25 @@ public class AsyncConfig {
         BUILDER.push("Async Config");
 
         disabled = BUILDER.comment("Enables parallel processing of entity.")
-                .define("disabled", com.axalotl.async.common.config.AsyncConfig.disabled);
+                .define("disabled", isDisabled());
 
         paraMax = BUILDER.comment("Maximum number of threads to use for parallel processing. Set to -1 to use default value.")
-                .define("paraMax", com.axalotl.async.common.config.AsyncConfig.paraMax);
+                .define("paraMax", getParaMax());
 
         synchronizedEntities = BUILDER.comment("List of entity class for sync processing.")
                 .define("synchronizedEntities", new java.util.ArrayList<>(com.axalotl.async.common.config.AsyncConfig.synchronizedEntities.stream().map(ResourceLocation::toString).toList()));
 
         enableAsyncSpawn = BUILDER.comment("Enables parallel processing of entity spawns.")
-                .define("enableAsyncSpawn", com.axalotl.async.common.config.AsyncConfig.enableAsyncSpawn);
+                .define("enableAsyncSpawn", isEnableAsyncSpawn());
 
         enableAsyncRandomTicks = BUILDER.comment("Experimental! Enables async processing of random ticks.")
-                .define("enableAsyncRandomTicks", com.axalotl.async.common.config.AsyncConfig.enableAsyncRandomTicks);
+                .define("enableAsyncRandomTicks", isEnableAsyncRandomTicks());
 
         chunkIOParaMax = BUILDER.comment("Maximum number of threads to use for chunk IO. Set to -1 to use default value.")
-                .define("chunkIOParaMax", com.axalotl.async.common.config.AsyncConfig.chunkIOParaMax);
+                .define("chunkIOParaMax", getChunkIOParaMax());
 
         chunkGenParaMax = BUILDER.comment("Maximum number of threads to use for chunk generation. Set to -1 to use default value.")
-                .define("chunkGenParaMax", com.axalotl.async.common.config.AsyncConfig.chunkGenParaMax);
+                .define("chunkGenParaMax", getChunkGenParaMax());
 
         BUILDER.pop();
         SPEC = BUILDER.build();
@@ -49,12 +49,12 @@ public class AsyncConfig {
     }
 
     public static void loadConfig() {
-        com.axalotl.async.common.config.AsyncConfig.disabled = disabled.get();
-        com.axalotl.async.common.config.AsyncConfig.paraMax = paraMax.get();
-        com.axalotl.async.common.config.AsyncConfig.chunkIOParaMax = chunkIOParaMax.get();
-        com.axalotl.async.common.config.AsyncConfig.chunkGenParaMax = chunkGenParaMax.get();
-        com.axalotl.async.common.config.AsyncConfig.enableAsyncSpawn = enableAsyncSpawn.get();
-        com.axalotl.async.common.config.AsyncConfig.enableAsyncRandomTicks = enableAsyncRandomTicks.get();
+        setDisabled(disabled.get());
+        setParaMax(paraMax.get());
+        setChunkIOParaMax(chunkIOParaMax.get());
+        setChunkGenParaMax(chunkGenParaMax.get());
+        setEnableAsyncSpawn(enableAsyncSpawn.get());
+        setEnableAsyncRandomTicks(enableAsyncRandomTicks.get());
         List<String> ids = synchronizedEntities.get();
         HashSet<ResourceLocation> set = new HashSet<>();
 
@@ -71,12 +71,12 @@ public class AsyncConfig {
     }
 
     public static void saveConfig() {
-        disabled.set(com.axalotl.async.common.config.AsyncConfig.disabled);
-        paraMax.set(com.axalotl.async.common.config.AsyncConfig.paraMax);
-        chunkIOParaMax.set(com.axalotl.async.common.config.AsyncConfig.chunkIOParaMax);
-        chunkGenParaMax.set(com.axalotl.async.common.config.AsyncConfig.chunkGenParaMax);
-        enableAsyncSpawn.set(com.axalotl.async.common.config.AsyncConfig.enableAsyncSpawn);
-        enableAsyncRandomTicks.set(com.axalotl.async.common.config.AsyncConfig.enableAsyncRandomTicks);
+        disabled.set(isDisabled());
+        paraMax.set(getParaMax());
+        chunkIOParaMax.set(getChunkIOParaMax());
+        chunkGenParaMax.set(getChunkGenParaMax());
+        enableAsyncSpawn.set(isEnableAsyncSpawn());
+        enableAsyncRandomTicks.set(isEnableAsyncRandomTicks());
         synchronizedEntities.set(new java.util.ArrayList<>(com.axalotl.async.common.config.AsyncConfig.synchronizedEntities.stream().map(ResourceLocation::toString).toList()));
         SPEC.save();
         LOGGER.info("Configuration successfully saved.");

@@ -14,7 +14,7 @@ import net.minecraft.world.entity.monster.Shulker;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.vehicle.AbstractMinecart;
 import net.minecraft.world.entity.vehicle.Boat;
-import net.minecraft.world.level.*;
+import net.minecraft.world.level.NaturalSpawner;
 import net.minecraft.world.level.chunk.LevelChunk;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -27,7 +27,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.LockSupport;
 
 public class ParallelProcessor {
     public static final Logger LOGGER = LogManager.getLogger(ParallelProcessor.class);
@@ -46,6 +45,7 @@ public class ParallelProcessor {
     private static final Map<UUID, Integer> portalTickSyncMap = new ConcurrentHashMap<>();
     private static final Map<String, ExecutorService> managedPools = new ConcurrentHashMap<>();
     private static final Map<String, Set<WeakReference<Thread>>> mcThreadTracker = new ConcurrentHashMap<>();
+    private static final int PORTAL_SYNC_TICKS = 39;
     public static final Set<Class<?>> BLOCKED_ENTITIES = Set.of(
             FallingBlockEntity.class,
             Shulker.class,
@@ -110,13 +110,17 @@ public class ParallelProcessor {
     }
 
     private static boolean isSyncTickRequired(Entity entity) {
-        return AsyncConfig.disabled ||
-                entity instanceof Projectile ||
-                entity instanceof AbstractMinecart ||
-                entity instanceof ServerPlayer ||
-                BLOCKED_ENTITIES.stream().anyMatch(c -> c.isAssignableFrom(entity.getClass())) ||
-                blacklistedEntity.contains(entity.getUUID()) ||
-                AsyncConfig.synchronizedEntities.contains(EntityType.getKey(entity.getType()));
+        if (AsyncConfig.isDisabled()) {
+            return true;
+        }
+        if (entity instanceof Projectile || entity instanceof AbstractMinecart || entity instanceof ServerPlayer) {
+            return true;
+        }
+        if (BLOCKED_ENTITIES.stream().anyMatch(blockedClass -> blockedClass.isAssignableFrom(entity.getClass()))) {
+            return true;
+        }
+        return blacklistedEntity.contains(entity.getUUID())
+                || AsyncConfig.synchronizedEntities.contains(EntityType.getKey(entity.getType()));
     }
 
     private static boolean handlePortalSync(Entity entity) {
@@ -131,7 +135,7 @@ public class ParallelProcessor {
             }
         }
         if (isPortalTickRequired(entity)) {
-            portalTickSyncMap.put(entityId, 39);
+            portalTickSyncMap.put(entityId, PORTAL_SYNC_TICKS);
             return true;
         }
         return false;
@@ -159,7 +163,7 @@ public class ParallelProcessor {
     }
 
     public static void asyncSpawnForChunk(ServerLevel level, LevelChunk chunk, NaturalSpawner.SpawnState spawnState, List<MobCategory> categories) {
-        if (!AsyncConfig.disabled && AsyncConfig.enableAsyncSpawn) {
+        if (!AsyncConfig.isDisabled() && AsyncConfig.isEnableAsyncSpawn()) {
             CompletableFuture<Void> future = CompletableFuture.runAsync(() -> NaturalSpawner.spawnForChunk(level, chunk, spawnState, categories), ParallelProcessor.tickPool).exceptionally(e -> {
                 ParallelProcessor.LOGGER.error("Error in async spawn, switching to synchronous", e);
                 NaturalSpawner.spawnForChunk(level, chunk, spawnState, categories);
@@ -172,7 +176,7 @@ public class ParallelProcessor {
     }
 
     public static void asyncDespawn(Entity entity) {
-        if (!AsyncConfig.disabled && AsyncConfig.enableAsyncSpawn) {
+        if (!AsyncConfig.isDisabled() && AsyncConfig.isEnableAsyncSpawn()) {
             CompletableFuture<Void> future = CompletableFuture.runAsync(entity::checkDespawn, tickPool
             ).exceptionally(e -> {
                 LOGGER.error("Error in async spawn tick, switching to synchronous", e);
@@ -186,12 +190,9 @@ public class ParallelProcessor {
     }
 
     public static void postEntityTick() {
-        if (AsyncConfig.disabled) return;
+        if (AsyncConfig.isDisabled()) return;
         List<CompletableFuture<?>> futuresList = new ArrayList<>();
-        CompletableFuture<?> future;
-        while ((future = taskQueue.poll()) != null) {
-            futuresList.add(future);
-        }
+        taskQueue.drainTo(futuresList);
 
         CompletableFuture<?> allTasks = CompletableFuture.allOf(
                 futuresList.toArray(new CompletableFuture[0])
