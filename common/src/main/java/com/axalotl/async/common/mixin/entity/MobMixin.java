@@ -13,22 +13,22 @@ import org.spongepowered.asm.mixin.Mixin;
 public class MobMixin {
 
     @WrapMethod(method = "equipItemIfPossible")
-    private synchronized ItemStack tryEquip(ServerLevel level, ItemStack stack, Operation<ItemStack> original) {
+    private synchronized ItemStack wrapEquipItemIfPossible(ServerLevel level, ItemStack stack, Operation<ItemStack> original) {
         return original.call(level, stack);
     }
 
     @WrapMethod(method = "pickUpItem")
-    private synchronized void pickUpItem(ServerLevel level, ItemEntity entity, Operation<Void> original) {
+    private synchronized void wrapPickUpItem(ServerLevel level, ItemEntity entity, Operation<Void> original) {
         original.call(level, entity);
     }
 
     @WrapMethod(method = "setItemSlotAndDropWhenKilled")
-    private synchronized void equipLootStack(EquipmentSlot slot, ItemStack stack, Operation<Void> original) {
+    private synchronized void wrapSetItemSlotAndDropWhenKilled(EquipmentSlot slot, ItemStack stack, Operation<Void> original) {
         original.call(slot, stack);
     }
 
     @WrapMethod(method = "setBodyArmorItem")
-    private synchronized void equipLootStack(ItemStack stack, Operation<Void> original) {
+    private synchronized void wrapSetBodyArmorItem(ItemStack stack, Operation<Void> original) {
         original.call(stack);
     }
 }
